@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -137,6 +138,9 @@ func worker(wg *sync.WaitGroup, words <-chan Word, outputDir string, processedCo
 		} else {
 			filename = word.ID
 		}
+
+		// URL encode the filename to make it safe
+		filename = url.PathEscape(filename)
 
 		// Create filename with Unicode support
 		filename = filepath.Join(outputDir, filename+".json.gz")
