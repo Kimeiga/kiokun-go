@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Add this to grant write permissions
     steps:
       - uses: actions/checkout@v3
 
