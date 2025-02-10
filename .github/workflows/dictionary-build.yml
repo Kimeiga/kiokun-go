@@ -1,6 +1,7 @@
 name: Build Dictionary
 
 on:
+  push:
   workflow_dispatch: # Manual trigger
   schedule:
     - cron: "0 0 1 * *" # Run monthly
@@ -16,11 +17,6 @@ jobs:
 
       - name: Install xz-utils
         run: sudo apt-get install -y xz-utils
-
-      - name: Download and decompress JMDict
-        run: |
-          curl -L -o jmdict-eng-3.5.0.json.xz https://github.com/scriptin/jmdict-simplified/releases/download/3.5.0/jmdict-eng-3.5.0.json.xz
-          xz -d jmdict-eng-3.5.0.json.xz
 
       - name: Build dictionary
         run: go run main.go -input jmdict-eng-3.5.0.json -output static/dictionary -workers 8
