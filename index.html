@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Japanese Dictionary</title>
+    <title>Dictionary Lookup</title>
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <style>
         body {
@@ -11,6 +11,14 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+        }
+        .search {
+            margin-bottom: 20px;
+        }
+        input {
+            font-size: 1.2em;
+            padding: 5px;
+            width: 200px;
         }
         .entry {
             margin-bottom: 20px;
@@ -28,45 +36,57 @@
     </style>
 </head>
 <body>
-    <div id="content">Loading...</div>
-    <script>
-        async function loadWord() {
-            const word = window.location.pathname.split('/word/')[1];
-            if (!word) {
-                document.getElementById('content').innerHTML = 'Please specify a word in the URL: /word/例';
-                return;
-            }
+    <div class="search">
+        <input type="text" id="wordInput" placeholder="Enter character...">
+    </div>
+    <div id="content"></div>
 
+    <script>
+        async function lookupWord(word) {
             try {
-                const response = await fetch(`/dictionary/${word}.json.gz`);
+                const encodedWord = encodeURIComponent(word);
+                const doubleEncodedWord = encodeURIComponent(encodedWord);
+                const url = `https://raw.githubusercontent.com/kimeiga/kiokun-go/main/dictionary/${doubleEncodedWord}.json.gz`;
+                console.log('Trying URL:', url);
+                
+                const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error('Word not found');
+                    throw new Error(`Word not found (Status: ${response.status})`);
                 }
 
                 const compressed = await response.arrayBuffer();
                 const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
                 const data = JSON.parse(decompressed);
+                
+                console.log('Decoded data:', data);
 
                 let html = '';
-                data.forEach(entry => {
-                    html += `<div class="entry">
-                        <h2>${entry.kanji.join('、 ')}</h2>
-                        <div class="reading">${entry.reading.join('、 ')}</div>
-                        ${entry.sense.map((s, i) => `
-                            <div class="sense">
-                                ${i + 1}. ${s.gloss.join('; ')}
-                            </div>
-                        `).join('')}
-                    </div>`;
-                });
+                html += `<div class="entry">
+                    <h2>${data.kanji.map(k => k.text).join('、 ')}</h2>
+                    <div class="reading">${data.kana.map(k => k.text).join('、 ')}</div>
+                    ${data.sense.map((s, i) => `
+                        <div class="sense">
+                            ${i + 1}. ${s.gloss.join('; ')}
+                        </div>
+                    `).join('')}
+                </div>`;
 
                 document.getElementById('content').innerHTML = html;
             } catch (error) {
+                console.error('Error:', error);
                 document.getElementById('content').innerHTML = 'Error: ' + error.message;
             }
         }
 
-        loadWord();
+        const input = document.getElementById('wordInput');
+        input.addEventListener('input', (e) => {
+            const word = e.target.value.trim();
+            if (word) {
+                lookupWord(word);
+            } else {
+                document.getElementById('content').innerHTML = '';
+            }
+        });
     </script>
 </body>
-</html> 
+</html>

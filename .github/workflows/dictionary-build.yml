@@ -21,7 +21,7 @@ jobs:
         run: sudo apt-get install -y xz-utils
 
       - name: Build dictionary
-        run: go run main.go jmdict_types.go -output dictionary -workers 8
+        run: go run main.go jmdict_types.go -output dictionary -workers 4
 
       - name: Commit dictionary files
         run: |
