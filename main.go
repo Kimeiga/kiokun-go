@@ -5,18 +5,22 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ulikunitz/xz"
 )
 
 func main() {
 	// Command line flags
-	inputFile := flag.String("input", "jmdict-eng-3.5.0.json", "Input JMDict JSON file")
+	inputFile := flag.String("input", "jmdict-eng-3.5.0.json.xz", "Input JMDict JSON file")
 	outputDir := flag.String("output", "dictionary", "Output directory for word files")
 	numWorkers := flag.Int("workers", runtime.NumCPU(), "Number of worker goroutines")
 	flag.Parse()
@@ -37,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Read and parse input file
+	// Read and decompress input file
 	file, err := os.Open(*inputFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error opening input file: %v\n", err)
@@ -45,8 +49,20 @@ func main() {
 	}
 	defer file.Close()
 
+	var reader io.Reader
+	if strings.HasSuffix(*inputFile, ".xz") {
+		xzReader, err := xz.NewReader(file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating XZ reader: %v\n", err)
+			os.Exit(1)
+		}
+		reader = xzReader
+	} else {
+		reader = file
+	}
+
 	var dict JmdictTypes
-	decoder := json.NewDecoder(file)
+	decoder := json.NewDecoder(reader)
 	if err := decoder.Decode(&dict); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing JSON: %v\n", err)
 		os.Exit(1)

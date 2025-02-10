@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Dictionary</title>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .entry {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .reading {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .sense {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="content">Loading...</div>
+    <script>
+        async function loadWord() {
+            const word = window.location.pathname.split('/word/')[1];
+            if (!word) {
+                document.getElementById('content').innerHTML = 'Please specify a word in the URL: /word/例';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/dictionary/${word}.json.gz`);
+                if (!response.ok) {
+                    throw new Error('Word not found');
+                }
+
+                const compressed = await response.arrayBuffer();
+                const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
+                const data = JSON.parse(decompressed);
+
+                let html = '';
+                data.forEach(entry => {
+                    html += `<div class="entry">
+                        <h2>${entry.kanji.join('、 ')}</h2>
+                        <div class="reading">${entry.reading.join('、 ')}</div>
+                        ${entry.sense.map((s, i) => `
+                            <div class="sense">
+                                ${i + 1}. ${s.gloss.join('; ')}
+                            </div>
+                        `).join('')}
+                    </div>`;
+                });
+
+                document.getElementById('content').innerHTML = html;
+            } catch (error) {
+                document.getElementById('content').innerHTML = 'Error: ' + error.message;
+            }
+        }
+
+        loadWord();
+    </script>
+</body>
+</html> 

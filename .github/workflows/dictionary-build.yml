@@ -1,0 +1,34 @@
+name: Build Dictionary
+
+on:
+  workflow_dispatch: # Manual trigger
+  schedule:
+    - cron: "0 0 1 * *" # Run monthly
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+
+      - name: Install xz-utils
+        run: sudo apt-get install -y xz-utils
+
+      - name: Download and decompress JMDict
+        run: |
+          curl -L -o jmdict-eng-3.5.0.json.xz https://github.com/scriptin/jmdict-simplified/releases/download/3.5.0/jmdict-eng-3.5.0.json.xz
+          xz -d jmdict-eng-3.5.0.json.xz
+
+      - name: Build dictionary
+        run: go run main.go -input jmdict-eng-3.5.0.json -output static/dictionary -workers 8
+
+      - name: Commit dictionary files
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add static/dictionary/
+          git commit -m "Update dictionary files" || echo "No changes to commit"
+          git push
