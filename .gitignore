@@ -8,6 +8,12 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-jmdict*.json
-*.json.gz
-dictionary/
+dictionaries/*/output/
+dictionaries/*/source/*.json
+dictionaries/*/source/*.json.xz
+output/
+output_unzipped/
+output_test/
+output_han/
+output_kanji_test/
+output_non_han/

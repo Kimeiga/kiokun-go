@@ -1,0 +1,159 @@
+{
+  "version": "test-1.0",
+  "languages": ["eng"],
+  "commonOnly": false,
+  "dictDate": "2023-01-01",
+  "dictRevisions": ["1.0"],
+  "tags": {
+    "adj-i": "i-adjective",
+    "v5u": "Godan verb with u ending"
+  },
+  "words": [
+    {
+      "id": "1000001",
+      "kanji": [
+        {
+          "common": true,
+          "text": "食べる",
+          "tags": []
+        }
+      ],
+      "kana": [
+        {
+          "common": true,
+          "text": "たべる",
+          "tags": [],
+          "appliesToKanji": ["*"]
+        }
+      ],
+      "sense": [
+        {
+          "partOfSpeech": ["v1", "vt"],
+          "appliesToKanji": ["*"],
+          "appliesToKana": ["*"],
+          "related": [],
+          "antonym": [],
+          "field": [],
+          "dialect": [],
+          "misc": [],
+          "info": [],
+          "languageSource": [],
+          "gloss": [
+            {
+              "lang": "eng",
+              "text": "to eat"
+            }
+          ],
+          "examples": [
+            {
+              "source": {
+                "type": "tatoeba",
+                "value": "12345"
+              },
+              "text": "ごはんを食べる",
+              "sentences": [
+                {
+                  "lang": "eng",
+                  "text": "I eat rice."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1000002",
+      "kanji": [
+        {
+          "common": true,
+          "text": "美しい",
+          "tags": []
+        }
+      ],
+      "kana": [
+        {
+          "common": true,
+          "text": "うつくしい",
+          "tags": [],
+          "appliesToKanji": ["*"]
+        }
+      ],
+      "sense": [
+        {
+          "partOfSpeech": ["adj-i"],
+          "appliesToKanji": ["*"],
+          "appliesToKana": ["*"],
+          "related": [],
+          "antonym": [
+            { "String": "醜い" }
+          ],
+          "field": ["art"],
+          "dialect": [],
+          "misc": [],
+          "info": ["used to describe natural beauty"],
+          "languageSource": [],
+          "gloss": [
+            {
+              "lang": "eng",
+              "text": "beautiful"
+            },
+            {
+              "lang": "eng",
+              "gender": "neuter",
+              "type": "literal",
+              "text": "pretty"
+            }
+          ],
+          "examples": []
+        }
+      ]
+    },
+    {
+      "id": "1000003",
+      "kanji": [
+        {
+          "common": false,
+          "text": "日本語",
+          "tags": []
+        }
+      ],
+      "kana": [
+        {
+          "common": true,
+          "text": "にほんご",
+          "tags": [],
+          "appliesToKanji": ["*"]
+        }
+      ],
+      "sense": [
+        {
+          "partOfSpeech": ["n"],
+          "appliesToKanji": ["*"],
+          "appliesToKana": ["*"],
+          "related": [],
+          "antonym": [],
+          "field": ["ling"],
+          "dialect": [],
+          "misc": [],
+          "info": [],
+          "languageSource": [
+            {
+              "lang": "jpn",
+              "full": true,
+              "wasei": false,
+              "text": "日本語"
+            }
+          ],
+          "gloss": [
+            {
+              "lang": "eng",
+              "text": "Japanese (language)"
+            }
+          ],
+          "examples": []
+        }
+      ]
+    }
+  ]
+} 
