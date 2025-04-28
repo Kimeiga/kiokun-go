@@ -202,14 +202,23 @@ func (p *DictionaryProcessor) getOrCreateGroup(form string) *WordGroup {
 	return group
 }
 
-// sanitizeWordGroup removes duplicate entries from a word group
+// sanitizeWordGroup removes duplicate entries and minifies data in a word group
 func sanitizeWordGroup(group *WordGroup) {
-	// Deduplicate JMdict entries
+	// Deduplicate and sanitize JMdict entries
 	seen := make(map[string]bool)
 	var uniqueWords []jmdict.Word
 	for _, word := range group.WordJapanese {
 		if !seen[word.ID] {
 			seen[word.ID] = true
+
+			// Sanitize each word by removing wildcards from senses and kana entries
+			for i := range word.Sense {
+				word.Sense[i].SanitizeWildcards()
+			}
+			for i := range word.Kana {
+				word.Kana[i].SanitizeWildcards()
+			}
+
 			uniqueWords = append(uniqueWords, word)
 		}
 	}
@@ -237,23 +246,44 @@ func sanitizeWordGroup(group *WordGroup) {
 	}
 	group.CharJapanese = uniqueKanji
 
-	// Deduplicate Chinese character entries
+	// Deduplicate and sanitize Chinese character entries
 	seen = make(map[string]bool)
 	var uniqueChineseChars []chinese_chars.ChineseCharEntry
 	for _, char := range group.CharChinese {
 		if !seen[char.ID] {
 			seen[char.ID] = true
+
+			// Sanitize Chinese character entries by removing empty slices
+			if len(char.Definitions) == 0 {
+				char.Definitions = nil
+			}
+			if len(char.Pinyin) == 0 {
+				char.Pinyin = nil
+			}
+
 			uniqueChineseChars = append(uniqueChineseChars, char)
 		}
 	}
 	group.CharChinese = uniqueChineseChars
 
-	// Deduplicate Chinese word entries
+	// Deduplicate and sanitize Chinese word entries
 	seen = make(map[string]bool)
 	var uniqueChineseWords []chinese_words.ChineseWordEntry
 	for _, word := range group.WordChinese {
 		if !seen[word.ID] {
 			seen[word.ID] = true
+
+			// Sanitize Chinese word entries by removing empty slices
+			if len(word.Definitions) == 0 {
+				word.Definitions = nil
+			}
+			if len(word.Pinyin) == 0 {
+				word.Pinyin = nil
+			}
+			if word.Frequency != nil && len(word.Frequency) == 0 {
+				word.Frequency = nil
+			}
+
 			uniqueChineseWords = append(uniqueChineseWords, word)
 		}
 	}

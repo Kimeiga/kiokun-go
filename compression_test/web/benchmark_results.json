@@ -1,0 +1,47 @@
+[
+  {
+    "Algorithm": "Gzip",
+    "OriginalSize": 54692,
+    "CompressedSize": 745,
+    "CompressionRatio": 0.013621736268558473,
+    "CompressionTime": 223125,
+    "DecompressionTime": 63542,
+    "NetworkTransferTime": 745000
+  },
+  {
+    "Algorithm": "Zstd",
+    "OriginalSize": 54692,
+    "CompressedSize": 475,
+    "CompressionRatio": 0.008684999634315805,
+    "CompressionTime": 485792,
+    "DecompressionTime": 156750,
+    "NetworkTransferTime": 475000
+  },
+  {
+    "Algorithm": "Brotli",
+    "OriginalSize": 54692,
+    "CompressedSize": 411,
+    "CompressionRatio": 0.007514810209902728,
+    "CompressionTime": 893542,
+    "DecompressionTime": 56291,
+    "NetworkTransferTime": 411000
+  },
+  {
+    "Algorithm": "LZ4",
+    "OriginalSize": 54692,
+    "CompressedSize": 979,
+    "CompressionRatio": 0.017900241351568785,
+    "CompressionTime": 215000,
+    "DecompressionTime": 130250,
+    "NetworkTransferTime": 979000
+  },
+  {
+    "Algorithm": "XZ",
+    "OriginalSize": 54692,
+    "CompressedSize": 564,
+    "CompressionRatio": 0.01031229430264024,
+    "CompressionTime": 1111209,
+    "DecompressionTime": 124916,
+    "NetworkTransferTime": 564000
+  }
+]
