@@ -25,6 +25,27 @@ jobs:
         with:
           go-version: "1.21"
 
+      - name: Download dictionary source files
+        run: |
+          # Create directories if they don't exist
+          mkdir -p dictionaries/jmdict/source
+          mkdir -p dictionaries/jmnedict/source
+
+          # Download JMdict file
+          echo "Downloading JMdict file..."
+          curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1/jmdict-eng-3.6.1.json
+
+          # Download JMNedict file
+          echo "Downloading JMNedict file..."
+          curl -L -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json https://github.com/scriptin/jmnedict-simplified/releases/download/3.6.1/jmnedict-3.6.1.json
+
+          # Verify files were downloaded
+          ls -la dictionaries/jmdict/source/
+          ls -la dictionaries/jmnedict/source/
+          ls -la dictionaries/kanjidic/source/
+          ls -la dictionaries/chinese_chars/source/
+          ls -la dictionaries/chinese_words/source/
+
       - name: Build Dictionary
         run: |
           go run cmd/kiokun/main.go --writers 16 --silent
