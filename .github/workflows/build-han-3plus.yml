@@ -88,7 +88,13 @@ jobs:
 
       - name: Generate Han 3+ character dictionary files
         run: |
+          # Debug: Check if the Chinese dictionary files exist
+          echo "Checking if Chinese dictionary files exist..."
+          ls -la dictionaries/chinese_chars/source/
+          ls -la dictionaries/chinese_words/source/
+
           # The new sharded processor generates all shards at once, but we only need the han-3plus shard
+          echo "Running the main program..."
           go run cmd/kiokun/main.go --writers 16 --silent
           echo "Generated $(find output_han_3plus -type f | wc -l) files"
 
