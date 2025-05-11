@@ -46,8 +46,25 @@ jobs:
           ls -la dictionaries/jmdict/source/
           ls -la dictionaries/jmnedict/source/
           ls -la dictionaries/kanjidic/source/
-          ls -la dictionaries/chinese_chars/source/
-          ls -la dictionaries/chinese_words/source/
+
+          # Create Chinese dictionary directories if they don't exist
+          mkdir -p dictionaries/chinese_chars/source
+          mkdir -p dictionaries/chinese_words/source
+
+          # Check if Chinese dictionary files exist
+          if [ -f "dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json" ]; then
+            echo "Chinese character dictionary file exists"
+          else
+            echo "Chinese character dictionary file does not exist, creating empty file"
+            echo "[]" > dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
+          fi
+
+          if [ -f "dictionaries/chinese_words/source/dictionary_word_2024-06-17.json" ]; then
+            echo "Chinese word dictionary file exists"
+          else
+            echo "Chinese word dictionary file does not exist, creating empty file"
+            echo "[]" > dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
+          fi
 
       - name: Generate Han 1-character dictionary files
         run: |
