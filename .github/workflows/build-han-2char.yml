@@ -118,7 +118,7 @@ jobs:
           # The new sharded processor generates all shards at once, but we only need the han-2char shard
           echo "Running the main program with reduced writers and a limit for testing..."
           # Use fewer writers and add a limit for testing
-          go run cmd/kiokun/main.go --writers 8 --verbose
+          go run cmd/kiokun/main.go --writers 8 
           echo "Generated $(find output_han_2char -type f | wc -l) files"
 
       - name: Setup Git
