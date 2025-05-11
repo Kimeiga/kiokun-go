@@ -29,6 +29,33 @@ if [ ! -f dictionaries/jmnedict/source/jmnedict-all-3.6.1.json ]; then
   unzip -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip -d dictionaries/jmnedict/source/
 fi
 
+# Download Kanjidic file if it doesn't exist
+mkdir -p dictionaries/kanjidic/source
+if [ ! -f dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json ]; then
+  echo "Downloading Kanjidic file..."
+  curl -L -o dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/kanjidic2-en-3.6.1+20250505122413.json
+fi
+
+# Download and convert Chinese character dictionary
+mkdir -p dictionaries/chinese_chars/source
+if [ ! -f dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json ]; then
+  echo "Downloading Chinese character dictionary..."
+  curl -L -o dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl https://data.dong-chinese.com/dump/dictionary_char_2024-06-17.jsonl
+
+  echo "Converting Chinese character dictionary from JSONL to JSON..."
+  go run cmd/jsonl2json/main.go -input=dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl -output=dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
+fi
+
+# Download and convert Chinese word dictionary
+mkdir -p dictionaries/chinese_words/source
+if [ ! -f dictionaries/chinese_words/source/dictionary_word_2024-06-17.json ]; then
+  echo "Downloading Chinese word dictionary..."
+  curl -L -o dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl https://data.dong-chinese.com/dump/dictionary_word_2024-06-17.jsonl
+
+  echo "Converting Chinese word dictionary from JSONL to JSON..."
+  go run cmd/jsonl2json/main.go -input=dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl -output=dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
+fi
+
 # Verify files were downloaded
 echo "Verifying downloaded files..."
 ls -la dictionaries/jmdict/source/
