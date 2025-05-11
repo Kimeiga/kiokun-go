@@ -181,19 +181,68 @@ jobs:
           echo "Running the main program for ${{ matrix.shard-type }}..."
           go run cmd/kiokun/main.go --writers 4 --mode ${{ matrix.shard-type }}
 
-          # Verify output
-          echo "Generated $(find output_${{ matrix.shard-type }} -type f | wc -l) files"
+          # List all output directories to see where files were generated
+          echo "Listing all output directories after build:"
+          find . -type d -name "output*" | sort
+
+          # Count files in all output directories
+          for dir in $(find . -type d -name "output*"); do
+            count=$(find "$dir" -type f | wc -l)
+            echo "Directory $dir contains $count files"
+          done
 
       # Push to the appropriate output repository
       - name: Push to output repository
         run: |
           # Debug: List all output directories
           echo "Listing all output directories:"
-          ls -la | grep output
+          find . -type d -name "output*" | sort
 
-          # Navigate to output directory (using underscore in path)
-          echo "Navigating to output directory for ${{ matrix.shard-type }}..."
-          cd output_${{ matrix.shard-type }}
+          # Find the correct output directory
+          echo "Finding the correct output directory for ${{ matrix.shard-type }}..."
+
+          # Try different possible directory patterns
+          possible_dirs=(
+            "output_${{ matrix.shard-type }}"
+            "output_han_1char_${{ matrix.shard-type }}"
+            "output_${{ matrix.shard-type }}_${{ matrix.shard-type }}"
+          )
+
+          output_dir=""
+          for dir in "${possible_dirs[@]}"; do
+            if [ -d "$dir" ]; then
+              # Check if directory has files
+              file_count=$(find "$dir" -type f | wc -l)
+              if [ "$file_count" -gt 0 ]; then
+                output_dir="$dir"
+                echo "Found directory with files: $output_dir"
+                break
+              fi
+            fi
+          done
+
+          # If no directory found, try a more exhaustive search
+          if [ -z "$output_dir" ]; then
+            echo "No directory found with standard naming. Searching all output directories..."
+            for dir in $(find . -type d -name "output*"); do
+              file_count=$(find "$dir" -type f | wc -l)
+              if [ "$file_count" -gt 0 ]; then
+                output_dir="$dir"
+                echo "Found directory with files: $output_dir"
+                break
+              fi
+            done
+          fi
+
+          # Exit if no directory with files found
+          if [ -z "$output_dir" ]; then
+            echo "No output directory with files found. Skipping repository push."
+            exit 1
+          fi
+
+          # Navigate to output directory
+          echo "Navigating to output directory: $output_dir"
+          cd "$output_dir"
 
           # Debug: List files in output directory
           echo "Files in output directory:"
