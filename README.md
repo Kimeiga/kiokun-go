@@ -2,6 +2,8 @@
 
 A multilingual dictionary processor for Japanese and Chinese dictionary sources (JMdict, JMNedict, Kanjidic, Chinese characters, and Chinese words). It creates an optimized index-based structure for efficient lookup and retrieval.
 
+This project uses a sharded architecture to handle the large number of dictionary files.
+
 ## Recent Updates
 
 ### Sharded Repository Architecture
