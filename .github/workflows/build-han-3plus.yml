@@ -1,11 +1,8 @@
 name: Build Han-3+ Character Dictionary
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "cmd/**"
-      - ".github/workflows/build-han-3plus.yml"
+  repository_dispatch:
+    types: [build-han-3plus]
   workflow_dispatch: # Allow manual triggering
 
 jobs:

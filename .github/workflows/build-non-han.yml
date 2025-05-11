@@ -1,11 +1,8 @@
 name: Build Non-Han Dictionary
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "cmd/**"
-      - ".github/workflows/build-non-han.yml"
+  repository_dispatch:
+    types: [build-non-han]
   workflow_dispatch: # Allow manual triggering
 
 jobs:
