@@ -187,8 +187,27 @@ jobs:
       # Push to the appropriate output repository
       - name: Push to output repository
         run: |
-          # Navigate to output directory
+          # Debug: List all output directories
+          echo "Listing all output directories:"
+          ls -la | grep output
+
+          # Navigate to output directory (using underscore in path)
+          echo "Navigating to output directory for ${{ matrix.shard-type }}..."
           cd output_${{ matrix.shard-type }}
+
+          # Debug: List files in output directory
+          echo "Files in output directory:"
+          ls -la
+
+          # Count files
+          file_count=$(find . -type f | wc -l)
+          echo "Found $file_count files to commit"
+
+          # Exit if no files found
+          if [ "$file_count" -eq 0 ]; then
+            echo "No files found in output directory. Skipping repository push."
+            exit 1
+          fi
 
           # Initialize new git repo
           rm -rf .git
