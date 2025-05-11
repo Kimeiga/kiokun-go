@@ -30,3 +30,16 @@ compression_test/test_data/jmdict-examples-eng-3.6.1.json
 compression_test/web-test/src/test_data/jmdict.json
 dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl
 dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
+[0;34mFinding commit that introduced 'dictionaries/chinese_words/source/dictionary_word_2024-06-17.json'...[0m
+[0;34mFile was introduced in commit:[0m
+  Commit: 915f23dbd73762e1df53737b9ef92b78f9081ba1
+  Author: Hakan
+  Date:   Alpay Sun May 11 10:19:09 2025 -0400 Update .gitignore to include Chinese dictionary JSON files needed for build
+[0;34mFile is not in .gitignore[0m
+[0;34mBacking up 'dictionaries/chinese_words/source/dictionary_word_2024-06-17.json'...[0m
+dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
+[0;34mFinding commit that introduced 'dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json'...[0m
+[0;34mFile was introduced in commit:[0m
+[0;34mFile is not in .gitignore[0m
+[0;34mBacking up 'dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json'...[0m
+dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
