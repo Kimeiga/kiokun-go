@@ -22,32 +22,86 @@ jobs:
       - name: Download JMdict files
         run: |
           mkdir -p dictionaries/jmdict/source
+          echo "Downloading JMdict files..."
           curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1/jmdict-examples-eng-3.6.1.json
+          # Verify file was downloaded correctly
+          filesize=$(stat -c%s "dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json")
+          echo "JMdict file size: $filesize bytes"
+          if [ "$filesize" -lt 1000000 ]; then
+            echo "Error: JMdict file is too small, likely not downloaded correctly"
+            head -n 20 dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json
+            exit 1
+          fi
 
       - name: Download JMnedict files
         run: |
           mkdir -p dictionaries/jmnedict/source
+          echo "Downloading JMnedict files..."
           curl -L -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1/jmnedict-all-3.6.1.json
+          # Verify file was downloaded correctly
+          filesize=$(stat -c%s "dictionaries/jmnedict/source/jmnedict-all-3.6.1.json")
+          echo "JMnedict file size: $filesize bytes"
+          if [ "$filesize" -lt 1000000 ]; then
+            echo "Error: JMnedict file is too small, likely not downloaded correctly"
+            head -n 20 dictionaries/jmnedict/source/jmnedict-all-3.6.1.json
+            exit 1
+          fi
 
       - name: Download Kanjidic files
         run: |
           mkdir -p dictionaries/kanjidic/source
+          echo "Downloading Kanjidic files..."
           curl -L -o dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1/kanjidic2-en-3.6.1.json
+          # Verify file was downloaded correctly
+          filesize=$(stat -c%s "dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json")
+          echo "Kanjidic file size: $filesize bytes"
+          if [ "$filesize" -lt 100000 ]; then
+            echo "Error: Kanjidic file is too small, likely not downloaded correctly"
+            head -n 20 dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json
+            exit 1
+          fi
 
       - name: Download Chinese dictionary files
         run: |
           mkdir -p dictionaries/chinese_chars/source
           mkdir -p dictionaries/chinese_words/source
 
+          echo "Downloading Chinese character dictionary..."
           # Download Chinese character dictionary
           curl -L -o dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl https://data.dong-chinese.com/dictionary_char_2024-06-17.jsonl
 
+          # Verify file was downloaded correctly
+          filesize=$(stat -c%s "dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl")
+          echo "Chinese char dictionary file size: $filesize bytes"
+          if [ "$filesize" -lt 1000000 ]; then
+            echo "Error: Chinese char dictionary file is too small, likely not downloaded correctly"
+            head -n 20 dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl
+            exit 1
+          fi
+
+          echo "Downloading Chinese word dictionary..."
           # Download Chinese word dictionary
           curl -L -o dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl https://data.dong-chinese.com/dictionary_word_2024-06-17.jsonl
 
+          # Verify file was downloaded correctly
+          filesize=$(stat -c%s "dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl")
+          echo "Chinese word dictionary file size: $filesize bytes"
+          if [ "$filesize" -lt 1000000 ]; then
+            echo "Error: Chinese word dictionary file is too small, likely not downloaded correctly"
+            head -n 20 dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
+            exit 1
+          fi
+
+          echo "Converting JSONL to JSON..."
           # Convert JSONL to JSON
           go run cmd/jsonl2json/main.go -input=dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl -output=dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
           go run cmd/jsonl2json/main.go -input=dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl -output=dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
+
+          # Verify JSON files were created correctly
+          filesize1=$(stat -c%s "dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json")
+          filesize2=$(stat -c%s "dictionaries/chinese_words/source/dictionary_word_2024-06-17.json")
+          echo "Chinese char JSON file size: $filesize1 bytes"
+          echo "Chinese word JSON file size: $filesize2 bytes"
 
           # Debug: Check if the files exist
           echo "Checking if Chinese dictionary files exist..."
@@ -102,12 +156,70 @@ jobs:
           key: ${{ runner.os }}-dictionary-files-${{ github.sha }}
 
       # Generate dictionary files with type-specific parameters
-      - name: Generate dictionary files
+      - name: Verify dictionary files
         run: |
-          # Debug: Check if the Chinese dictionary files exist
-          echo "Checking if Chinese dictionary files exist..."
+          # Debug: Check if the dictionary files exist and have proper content
+          echo "Checking if dictionary files exist and have proper content..."
+
+          # Check JMdict file
+          echo "JMdict file:"
+          ls -la dictionaries/jmdict/source/
+          filesize=$(stat -c%s "dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json" || echo 0)
+          echo "JMdict file size: $filesize bytes"
+          if [ "$filesize" -lt 1000000 ]; then
+            echo "Error: JMdict file is too small or missing"
+            head -n 20 dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json || echo "File not found"
+            exit 1
+          fi
+
+          # Check JMnedict file
+          echo "JMnedict file:"
+          ls -la dictionaries/jmnedict/source/
+          filesize=$(stat -c%s "dictionaries/jmnedict/source/jmnedict-all-3.6.1.json" || echo 0)
+          echo "JMnedict file size: $filesize bytes"
+          if [ "$filesize" -lt 1000000 ]; then
+            echo "Error: JMnedict file is too small or missing"
+            head -n 20 dictionaries/jmnedict/source/jmnedict-all-3.6.1.json || echo "File not found"
+            exit 1
+          fi
+
+          # Check Kanjidic file
+          echo "Kanjidic file:"
+          ls -la dictionaries/kanjidic/source/
+          filesize=$(stat -c%s "dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json" || echo 0)
+          echo "Kanjidic file size: $filesize bytes"
+          if [ "$filesize" -lt 100000 ]; then
+            echo "Error: Kanjidic file is too small or missing"
+            head -n 20 dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json || echo "File not found"
+            exit 1
+          fi
+
+          # Check Chinese dictionary files
+          echo "Chinese dictionary files:"
           ls -la dictionaries/chinese_chars/source/
           ls -la dictionaries/chinese_words/source/
+
+          filesize1=$(stat -c%s "dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json" || echo 0)
+          filesize2=$(stat -c%s "dictionaries/chinese_words/source/dictionary_word_2024-06-17.json" || echo 0)
+          echo "Chinese char JSON file size: $filesize1 bytes"
+          echo "Chinese word JSON file size: $filesize2 bytes"
+
+          if [ "$filesize1" -lt 1000000 ]; then
+            echo "Error: Chinese char dictionary file is too small or missing"
+            head -n 20 dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json || echo "File not found"
+            exit 1
+          fi
+
+          if [ "$filesize2" -lt 1000000 ]; then
+            echo "Error: Chinese word dictionary file is too small or missing"
+            head -n 20 dictionaries/chinese_words/source/dictionary_word_2024-06-17.json || echo "File not found"
+            exit 1
+          fi
+
+      - name: Run dictionary build
+        run: |
+          # Create output directory
+          mkdir -p output_${{ matrix.shard-type }}
 
           # Run the main program with the appropriate shard type
           echo "Running the main program for ${{ matrix.shard-type }}..."
