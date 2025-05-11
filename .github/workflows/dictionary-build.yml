@@ -10,6 +10,10 @@ on:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # Add a timeout to prevent jobs from running indefinitely
+    concurrency:
+      group: ${{ github.workflow }}
+      cancel-in-progress: true # Cancel in-progress jobs when a new one is triggered
     steps:
       - uses: actions/checkout@v3
 
@@ -103,29 +107,46 @@ jobs:
   trigger-builds:
     needs: prepare
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # Add a timeout to prevent jobs from running indefinitely
+    concurrency:
+      group: ${{ github.workflow }}-trigger
+      cancel-in-progress: true # Cancel in-progress jobs when a new one is triggered
     steps:
       - uses: actions/checkout@v3
 
-      - name: Trigger Han-1Char Build
+      # Run builds sequentially to avoid resource contention
+      - name: Trigger Non-Han Build (First)
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.DICTIONARY_DEPLOY_TOKEN }}
+          event-type: build-non-han
+
+      # Wait for Non-Han build to complete (approximately 30 minutes)
+      - name: Wait for Non-Han Build to complete
+        run: sleep 1800
+
+      - name: Trigger Han-1Char Build (Second)
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.DICTIONARY_DEPLOY_TOKEN }}
           event-type: build-han-1char
 
-      - name: Trigger Han-2Char Build
+      # Wait for Han-1Char build to complete (approximately 30 minutes)
+      - name: Wait for Han-1Char Build to complete
+        run: sleep 1800
+
+      - name: Trigger Han-2Char Build (Third)
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.DICTIONARY_DEPLOY_TOKEN }}
           event-type: build-han-2char
 
-      - name: Trigger Han-3Plus Build
+      # Wait for Han-2Char build to complete (approximately 30 minutes)
+      - name: Wait for Han-2Char Build to complete
+        run: sleep 1800
+
+      - name: Trigger Han-3Plus Build (Last)
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.DICTIONARY_DEPLOY_TOKEN }}
           event-type: build-han-3plus
-
-      - name: Trigger Non-Han Build
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.DICTIONARY_DEPLOY_TOKEN }}
-          event-type: build-non-han

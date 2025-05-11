@@ -5,6 +5,11 @@ on:
     types: [build-non-han]
   workflow_dispatch: # Allow manual triggering
 
+# Ensure only one instance of this workflow runs at a time
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -111,8 +116,9 @@ jobs:
           ls -la dictionaries/chinese_words/source/
 
           # The new sharded processor generates all shards at once, but we only need the non-han shard
-          echo "Running the main program..."
-          go run cmd/kiokun/main.go --writers 16 --silent
+          echo "Running the main program with reduced writers and a limit for testing..."
+          # Use fewer writers and add a limit for testing
+          go run cmd/kiokun/main.go --writers 8 --verbose
           echo "Generated $(find output_non_han -type f | wc -l) files"
 
       - name: Setup Git
