@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      OUTPUT_REPO: your-username/japanese-dict-han-3plus
+      OUTPUT_REPO: Kimeiga/japanese-dict-han-3plus
 
     steps:
       - name: Checkout source code
@@ -25,13 +25,37 @@ jobs:
 
       - name: Download dictionary source files
         run: |
-          # Add commands to download your source files
-          # For example:
-          # curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json https://example.com/path/to/jmdict.json
+          # Create directories if they don't exist
+          mkdir -p dictionaries/jmdict/source
+          mkdir -p dictionaries/jmnedict/source
+
+          # Download JMdict file with examples
+          echo "Downloading JMdict file with examples..."
+          curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/jmdict-examples-eng-3.6.1+20250505122413.json.zip
+
+          # Unzip the JMdict file
+          echo "Unzipping JMdict file..."
+          unzip -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip -d dictionaries/jmdict/source/
+
+          # Download JMNedict file
+          echo "Downloading JMNedict file..."
+          curl -L -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/jmnedict-all-3.6.1+20250505122413.json.zip
+
+          # Unzip the JMNedict file
+          echo "Unzipping JMNedict file..."
+          unzip -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip -d dictionaries/jmnedict/source/
+
+          # Verify files were downloaded
+          ls -la dictionaries/jmdict/source/
+          ls -la dictionaries/jmnedict/source/
+          ls -la dictionaries/kanjidic/source/
+          ls -la dictionaries/chinese_chars/source/
+          ls -la dictionaries/chinese_words/source/
 
       - name: Generate Han 3+ character dictionary files
         run: |
-          go run cmd/kiokun/main.go --writers 16 --mode=han-3plus --silent
+          # The new sharded processor generates all shards at once, but we only need the han-3plus shard
+          go run cmd/kiokun/main.go --writers 16 --silent
           echo "Generated $(find output_han_3plus -type f | wc -l) files"
 
       - name: Setup Git

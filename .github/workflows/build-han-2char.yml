@@ -51,7 +51,8 @@ jobs:
 
       - name: Generate Han 2-character dictionary files
         run: |
-          go run cmd/kiokun/main.go --writers 16 --mode=han-2char --silent
+          # The new sharded processor generates all shards at once, but we only need the han-2char shard
+          go run cmd/kiokun/main.go --writers 16 --silent
           echo "Generated $(find output_han_2char -type f | wc -l) files"
 
       - name: Setup Git

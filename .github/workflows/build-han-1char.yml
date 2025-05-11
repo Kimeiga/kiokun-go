@@ -1,25 +1,22 @@
-name: Build Non-Han Dictionary
+name: Build Han-1 Character Dictionary
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "cmd/**"
-      - ".github/workflows/build-non-han.yml"
+  repository_dispatch:
+    types: [build-han-1char]
   workflow_dispatch: # Allow manual triggering
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      OUTPUT_REPO: Kimeiga/japanese-dict-non-han
+      OUTPUT_REPO: Kimeiga/japanese-dict-han-1char
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
 
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: "1.21"
 
@@ -52,11 +49,11 @@ jobs:
           ls -la dictionaries/chinese_chars/source/
           ls -la dictionaries/chinese_words/source/
 
-      - name: Generate Non-Han dictionary files
+      - name: Generate Han 1-character dictionary files
         run: |
-          # The new sharded processor generates all shards at once, but we only need the non-han shard
+          # The new sharded processor generates all shards at once, but we only need the han-1char shard
           go run cmd/kiokun/main.go --writers 16 --silent
-          echo "Generated $(find output_non_han -type f | wc -l) files"
+          echo "Generated $(find output_han_1char -type f | wc -l) files"
 
       - name: Setup Git
         run: |
@@ -66,7 +63,7 @@ jobs:
       - name: Push to output repository
         run: |
           # Navigate to output directory
-          cd output_non_han
+          cd output_han_1char
 
           # Initialize new git repo (removing any existing one)
           rm -rf .git
@@ -75,11 +72,20 @@ jobs:
           # Add the remote
           git remote add origin https://x-access-token:${{ secrets.DICTIONARY_DEPLOY_TOKEN }}@github.com/${{ env.OUTPUT_REPO }}.git
 
-          # Add all files
-          git add .
+          # Add files in batches to avoid "too many files" error
+          echo "Adding files to git in batches..."
+          find . -type f -name "*.json" | sort | split -l 10000 - batch_
+          for batch in batch_*; do
+            echo "Adding batch $batch..."
+            xargs -a $batch git add
+          done
+          rm batch_*
+
+          # Add remaining files (non-JSON)
+          git add -A
 
           # Create commit
-          git commit -m "Update Non-Han dictionary files"
+          git commit -m "Update Han 1-character dictionary files"
 
           # Force push to completely replace contents
           git push -f origin master:main
