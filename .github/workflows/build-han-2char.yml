@@ -1,33 +1,53 @@
 name: Build Han-2 Character Dictionary
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "cmd/**"
-      - ".github/workflows/build-han-2char.yml"
+  repository_dispatch:
+    types: [build-han-2char]
   workflow_dispatch: # Allow manual triggering
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      OUTPUT_REPO: your-username/japanese-dict-han-2char
+      OUTPUT_REPO: Kimeiga/japanese-dict-han-2char
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
 
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: "1.21"
 
       - name: Download dictionary source files
         run: |
-          # Add commands to download your source files
-          # For example:
-          # curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json https://example.com/path/to/jmdict.json
+          # Create directories if they don't exist
+          mkdir -p dictionaries/jmdict/source
+          mkdir -p dictionaries/jmnedict/source
+
+          # Download JMdict file with examples
+          echo "Downloading JMdict file with examples..."
+          curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/jmdict-examples-eng-3.6.1+20250505122413.json.zip
+
+          # Unzip the JMdict file
+          echo "Unzipping JMdict file..."
+          unzip -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip -d dictionaries/jmdict/source/
+
+          # Download JMNedict file
+          echo "Downloading JMNedict file..."
+          curl -L -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/jmnedict-all-3.6.1+20250505122413.json.zip
+
+          # Unzip the JMNedict file
+          echo "Unzipping JMNedict file..."
+          unzip -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip -d dictionaries/jmnedict/source/
+
+          # Verify files were downloaded
+          ls -la dictionaries/jmdict/source/
+          ls -la dictionaries/jmnedict/source/
+          ls -la dictionaries/kanjidic/source/
+          ls -la dictionaries/chinese_chars/source/
+          ls -la dictionaries/chinese_words/source/
 
       - name: Generate Han 2-character dictionary files
         run: |
@@ -51,8 +71,17 @@ jobs:
           # Add the remote
           git remote add origin https://x-access-token:${{ secrets.DICTIONARY_DEPLOY_TOKEN }}@github.com/${{ env.OUTPUT_REPO }}.git
 
-          # Add all files
-          git add .
+          # Add files in batches to avoid "too many files" error
+          echo "Adding files to git in batches..."
+          find . -type f -name "*.json" | sort | split -l 10000 - batch_
+          for batch in batch_*; do
+            echo "Adding batch $batch..."
+            xargs -a $batch git add
+          done
+          rm batch_*
+
+          # Add remaining files (non-JSON)
+          git add -A
 
           # Create commit
           git commit -m "Update Han 2-character dictionary files"

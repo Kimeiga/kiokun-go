@@ -1,4 +1,4 @@
-name: Build Dictionary
+name: Build Dictionary Coordinator
 
 on:
   push:
@@ -13,10 +13,8 @@ on:
     - cron: "0 0 1 * *" # Run monthly
 
 jobs:
-  build:
+  prepare:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Add this to grant write permissions
     steps:
       - uses: actions/checkout@v3
 
@@ -38,7 +36,6 @@ jobs:
           # Unzip the JMdict file
           echo "Unzipping JMdict file..."
           unzip -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip -d dictionaries/jmdict/source/
-          # File is already named correctly, no need to rename
 
           # Download JMNedict file
           echo "Downloading JMNedict file..."
@@ -47,7 +44,6 @@ jobs:
           # Unzip the JMNedict file
           echo "Unzipping JMNedict file..."
           unzip -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip -d dictionaries/jmnedict/source/
-          # File is already named correctly, no need to rename
 
           # Verify files were downloaded
           ls -la dictionaries/jmdict/source/
@@ -56,15 +52,44 @@ jobs:
           ls -la dictionaries/chinese_chars/source/
           ls -la dictionaries/chinese_words/source/
 
-      - name: Build Dictionary
-        run: |
-          go run cmd/kiokun/main.go --writers 16 --silent
-          echo "Generated $(find output -type f | wc -l) files"
+      - name: Cache dictionary files
+        uses: actions/cache@v3
+        with:
+          path: |
+            dictionaries/jmdict/source/
+            dictionaries/jmnedict/source/
+            dictionaries/kanjidic/source/
+            dictionaries/chinese_chars/source/
+            dictionaries/chinese_words/source/
+          key: ${{ runner.os }}-dictionary-files-${{ github.sha }}
 
-      - name: Commit dictionary files
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add -f output/
-          git commit -m "Update dictionary files" || echo "No changes to commit"
-          git push
+  # Trigger the individual build workflows
+  trigger-builds:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Trigger Han-1Char Build
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          event-type: build-han-1char
+
+      - name: Trigger Han-2Char Build
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          event-type: build-han-2char
+
+      - name: Trigger Han-3Plus Build
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          event-type: build-han-3plus
+
+      - name: Trigger Non-Han Build
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          event-type: build-non-han
