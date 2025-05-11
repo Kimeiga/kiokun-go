@@ -13,9 +13,12 @@ dictionaries/*/output/
 dictionaries/*/source/*.json
 !dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
 !dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
-!dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json
-!dictionaries/jmnedict/source/jmnedict-all-3.6.1.json
 !dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json
+
+# Ignore JMdict and JMNedict files (downloaded during build)
+dictionaries/jmdict/source/
+dictionaries/jmnedict/source/
+*.json.zip
 dictionaries/*/source/*.json.xz
 output/
 output_unzipped/
