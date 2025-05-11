@@ -16,7 +16,7 @@ curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip https:/
 # Unzip the JMdict file
 echo "Unzipping JMdict file..."
 unzip -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip -d dictionaries/jmdict/source/
-mv dictionaries/jmdict/source/jmdict-examples-eng-3.6.1+20250505122413.json dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json
+# File is already named correctly, no need to rename
 
 # Download JMNedict file
 echo "Downloading JMNedict file..."
@@ -25,7 +25,7 @@ curl -L -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip https://gith
 # Unzip the JMNedict file
 echo "Unzipping JMNedict file..."
 unzip -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip -d dictionaries/jmnedict/source/
-mv dictionaries/jmnedict/source/jmnedict-all-3.6.1+20250505122413.json dictionaries/jmnedict/source/jmnedict-all-3.6.1.json
+# File is already named correctly, no need to rename
 
 # Verify files were downloaded
 echo "Verifying downloaded files..."
