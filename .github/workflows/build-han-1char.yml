@@ -45,7 +45,19 @@ jobs:
           # Verify files were downloaded
           ls -la dictionaries/jmdict/source/
           ls -la dictionaries/jmnedict/source/
-          ls -la dictionaries/kanjidic/source/
+
+          # Create Kanjidic directory if it doesn't exist
+          mkdir -p dictionaries/kanjidic/source
+
+          # Check if Kanjidic file exists
+          if [ -f "dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json" ]; then
+            echo "Kanjidic file exists"
+            ls -la dictionaries/kanjidic/source/
+          else
+            echo "Kanjidic file does not exist, downloading..."
+            curl -L -o dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/kanjidic2-en-3.6.1+20250505122413.json
+            ls -la dictionaries/kanjidic/source/
+          fi
 
           # Create Chinese dictionary directories if they don't exist
           mkdir -p dictionaries/chinese_chars/source
