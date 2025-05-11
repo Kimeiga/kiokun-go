@@ -10,9 +10,9 @@ import (
 
 // ProcessEntries processes dictionary entries and writes them to files
 func ProcessEntries(entries *DictionaryEntries, config *Config, logf LogFunc) error {
-	// Always use the index-based processor
-	logf("Using index-based processor with separate files for each dictionary\n")
-	proc, err := processor.NewIndexProcessor(config.OutputDir, config.FileWriters)
+	// Always use the sharded index-based processor
+	logf("Using sharded index-based processor with separate files for each dictionary and shard\n")
+	proc, err := processor.NewShardedIndexProcessor(config.OutputDir, config.FileWriters)
 
 	if err != nil {
 		return fmt.Errorf("error creating processor: %v", err)
