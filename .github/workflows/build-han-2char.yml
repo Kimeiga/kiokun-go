@@ -69,6 +69,16 @@ jobs:
 
             echo "Converting Chinese character dictionary from JSONL to JSON..."
             go run cmd/jsonl2json/main.go -input=dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl -output=dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
+
+            # Verify the file was created
+            echo "Verifying Chinese character dictionary file..."
+            ls -la dictionaries/chinese_chars/source/
+            if [ -f "dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json" ]; then
+              echo "Chinese character dictionary file was created successfully"
+            else
+              echo "Error: Chinese character dictionary file was not created"
+              exit 1
+            fi
           fi
 
           # Download and convert Chinese word dictionary
@@ -81,6 +91,16 @@ jobs:
 
             echo "Converting Chinese word dictionary from JSONL to JSON..."
             go run cmd/jsonl2json/main.go -input=dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl -output=dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
+
+            # Verify the file was created
+            echo "Verifying Chinese word dictionary file..."
+            ls -la dictionaries/chinese_words/source/
+            if [ -f "dictionaries/chinese_words/source/dictionary_word_2024-06-17.json" ]; then
+              echo "Chinese word dictionary file was created successfully"
+            else
+              echo "Error: Chinese word dictionary file was not created"
+              exit 1
+            fi
           fi
 
       - name: Generate Han 2-character dictionary files
