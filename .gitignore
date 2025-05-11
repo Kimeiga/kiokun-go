@@ -9,7 +9,10 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 dictionaries/*/output/
+# Allow specific JSON files needed for the build
 dictionaries/*/source/*.json
+!dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
+!dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
 dictionaries/*/source/*.json.xz
 output/
 output_unzipped/
@@ -20,23 +23,4 @@ output_non_han/
 compression_test/test_data/jmdict-examples-eng-3.6.1.json
 compression_test/web-test/src/test_data/jmdict.json
 dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl
-dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl[0;34mFinding commit that introduced 'compression_test/test_data/jmdict-examples-eng-3.6.1.json'...[0m
-[0;34mFile was introduced in commit:[0m
-  Commit: 95ac9f497413c7a5f0e1685460063ba400bbbae6
-  Author: Hakan
-  Date:   Alpay Sun Apr 27 19:30:32 2025 -0400 ocming back
-[0;34mFile is already in .gitignore[0m
-[0;34mBacking up 'compression_test/test_data/jmdict-examples-eng-3.6.1.json'...[0m
-[0;34mFinding commit that introduced 'compression_test/web-test/src/test_data/jmdict.json'...[0m
-[0;34mFile was introduced in commit:[0m
-[0;34mFile is already in .gitignore[0m
-[0;34mBacking up 'compression_test/web-test/src/test_data/jmdict.json'...[0m
-[0;34mFinding commit that introduced 'dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl'...[0m
-[0;34mFile was introduced in commit:[0m
-[0;34mFile is already in .gitignore[0m
-[0;34mBacking up 'dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl'...[0m
-[0;34mFinding commit that introduced 'dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl'...[0m
-[0;34mFile was introduced in commit:[0m
-[0;34mFile is already in .gitignore[0m
-[0;34mBacking up 'dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl'...[0m
 dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
