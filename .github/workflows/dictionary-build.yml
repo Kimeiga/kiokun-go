@@ -31,13 +31,23 @@ jobs:
           mkdir -p dictionaries/jmdict/source
           mkdir -p dictionaries/jmnedict/source
 
-          # Download JMdict file
-          echo "Downloading JMdict file..."
-          curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1/jmdict-eng-3.6.1.json
+          # Download JMdict file with examples
+          echo "Downloading JMdict file with examples..."
+          curl -L -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/jmdict-examples-eng-3.6.1+20250505122413.json.zip
+
+          # Unzip the JMdict file
+          echo "Unzipping JMdict file..."
+          unzip -o dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json.zip -d dictionaries/jmdict/source/
+          mv dictionaries/jmdict/source/jmdict-examples-eng-3.6.1+20250505122413.json dictionaries/jmdict/source/jmdict-examples-eng-3.6.1.json
 
           # Download JMNedict file
           echo "Downloading JMNedict file..."
-          curl -L -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json https://github.com/scriptin/jmnedict-simplified/releases/download/3.6.1/jmnedict-3.6.1.json
+          curl -L -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1+20250505122413/jmnedict-all-3.6.1+20250505122413.json.zip
+
+          # Unzip the JMNedict file
+          echo "Unzipping JMNedict file..."
+          unzip -o dictionaries/jmnedict/source/jmnedict-all-3.6.1.json.zip -d dictionaries/jmnedict/source/
+          mv dictionaries/jmnedict/source/jmnedict-all-3.6.1+20250505122413.json dictionaries/jmnedict/source/jmnedict-all-3.6.1.json
 
           # Verify files were downloaded
           ls -la dictionaries/jmdict/source/
