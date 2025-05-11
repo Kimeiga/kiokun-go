@@ -3,11 +3,6 @@ name: Build Dictionary Coordinator
 on:
   push:
     branches: [main]
-    paths:
-      - "cmd/**"
-      - "dictionaries/**"
-      - "processor/**"
-      - ".github/workflows/dictionary-build.yml"
   workflow_dispatch: # Manual trigger
   schedule:
     - cron: "0 0 1 * *" # Run monthly
