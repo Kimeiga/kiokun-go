@@ -13,7 +13,7 @@ func init() {
 	filename, err := common.FindDictionaryFile(sourceDir, pattern)
 	if err != nil {
 		// If file not found, register with default name - the importer will handle the error
-		filename = "jmnedict-all-.json"
+		filename = "jmnedict-all-3.6.1.json"
 	}
 
 	common.RegisterDictionary("jmnedict", filename, &Importer{})

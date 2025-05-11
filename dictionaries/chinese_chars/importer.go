@@ -23,19 +23,66 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 	}
 	defer file.Close()
 
-	// Parse the JSON file
-	var charEntries []ChineseCharEntry
-	if err := json.NewDecoder(file).Decode(&charEntries); err != nil {
+	// Parse the JSON file as a generic map to handle MongoDB-style fields
+	var rawEntries []map[string]interface{}
+	if err := json.NewDecoder(file).Decode(&rawEntries); err != nil {
 		return nil, err
 	}
 
-	// Convert to common.Entry interface
-	entries := make([]common.Entry, len(charEntries))
-	for i, entry := range charEntries {
-		// If ID is not set, use traditional character as ID
+	// Convert to ChineseCharEntry structs
+	entries := make([]common.Entry, len(rawEntries))
+	for i, rawEntry := range rawEntries {
+		entry := ChineseCharEntry{}
+
+		// Map _id to ID
+		if id, ok := rawEntry["_id"]; ok {
+			if idStr, ok := id.(string); ok {
+				entry.ID = idStr
+			}
+		}
+
+		// Map char to Traditional
+		if char, ok := rawEntry["char"]; ok {
+			if charStr, ok := char.(string); ok {
+				entry.Traditional = charStr
+				// If no simplified form is specified, use the traditional form
+				entry.Simplified = charStr
+			}
+		}
+
+		// Map simplified if available
+		if simp, ok := rawEntry["simpVariants"]; ok {
+			if simpArr, ok := simp.([]interface{}); ok && len(simpArr) > 0 {
+				if simpStr, ok := simpArr[0].(string); ok {
+					entry.Simplified = simpStr
+				}
+			}
+		}
+
+		// Map gloss to Definitions
+		if gloss, ok := rawEntry["gloss"]; ok {
+			if glossStr, ok := gloss.(string); ok {
+				entry.Definitions = []string{glossStr}
+			}
+		}
+
+		// Map strokeCount
+		if stroke, ok := rawEntry["strokeCount"]; ok {
+			if strokeFloat, ok := stroke.(float64); ok {
+				entry.StrokeCount = int(strokeFloat)
+			}
+		}
+
+		// Ensure ID is set
 		if entry.ID == "" {
 			entry.ID = entry.Traditional
 		}
+
+		// Ensure Traditional is set
+		if entry.Traditional == "" && entry.ID != "" {
+			entry.Traditional = entry.ID
+		}
+
 		entries[i] = entry
 	}
 

@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# Pre-commit hook to check for large files
+# Warns at 50MB, blocks at 100MB
+
+# Constants (in bytes)
+WARNING_SIZE=$((50 * 1024 * 1024))  # 50MB
+BLOCKING_SIZE=$((100 * 1024 * 1024))  # 100MB
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+echo "Checking for large files..."
+
+# Check all staged files
+has_warning=false
+has_error=false
+
+# Get list of staged files
+staged_files=$(git diff --cached --name-only)
+
+# First check staged files
+while IFS= read -r file; do
+    # Skip if file doesn't exist (e.g., it was deleted)
+    if [ ! -f "$file" ]; then
+        continue
+    fi
+    
+    # Get file size in bytes
+    size=$(stat -f%z "$file" 2>/dev/null || stat --format=%s "$file" 2>/dev/null)
+    
+    if [ $size -ge $BLOCKING_SIZE ]; then
+        echo -e "${RED}ERROR: $file is $(($size / 1024 / 1024))MB, which exceeds GitHub's maximum file size limit (100MB)${NC}"
+        has_error=true
+    elif [ $size -ge $WARNING_SIZE ]; then
+        echo -e "${YELLOW}WARNING: $file is $(($size / 1024 / 1024))MB, which exceeds the recommended GitHub file size (50MB)${NC}"
+        has_warning=true
+    fi
+done <<< "$staged_files"
+
+# Now check all tracked files to catch any large files that might already be in the repo
+all_tracked_files=$(git ls-files)
+
+while IFS= read -r file; do
+    # Skip if already checked in staged files
+    if echo "$staged_files" | grep -q "^$file$"; then
+        continue
+    fi
+    
+    # Skip if file doesn't exist
+    if [ ! -f "$file" ]; then
+        continue
+    fi
+    
+    # Get file size in bytes
+    size=$(stat -f%z "$file" 2>/dev/null || stat --format=%s "$file" 2>/dev/null)
+    
+    if [ $size -ge $BLOCKING_SIZE ]; then
+        echo -e "${YELLOW}NOTE: $file is $(($size / 1024 / 1024))MB, which exceeds GitHub's maximum file size limit (100MB)${NC}"
+        echo -e "${YELLOW}      This file is already tracked but not in this commit. Consider removing it with git filter-branch or BFG Repo Cleaner.${NC}"
+    elif [ $size -ge $WARNING_SIZE ]; then
+        echo -e "${YELLOW}NOTE: $file is $(($size / 1024 / 1024))MB, which exceeds the recommended GitHub file size (50MB)${NC}"
+        echo -e "${YELLOW}      This file is already tracked but not in this commit.${NC}"
+    fi
+done <<< "$all_tracked_files"
+
+# Also check untracked files that might be added later
+untracked_files=$(git ls-files --others --exclude-standard)
+
+while IFS= read -r file; do
+    # Skip if empty line
+    if [ -z "$file" ]; then
+        continue
+    fi
+    
+    # Skip if file doesn't exist
+    if [ ! -f "$file" ]; then
+        continue
+    fi
+    
+    # Get file size in bytes
+    size=$(stat -f%z "$file" 2>/dev/null || stat --format=%s "$file" 2>/dev/null)
+    
+    if [ $size -ge $BLOCKING_SIZE ]; then
+        echo -e "${YELLOW}NOTE: Untracked file $file is $(($size / 1024 / 1024))MB, which exceeds GitHub's maximum file size limit (100MB)${NC}"
+        echo -e "${YELLOW}      Don't add this file to git.${NC}"
+    elif [ $size -ge $WARNING_SIZE ]; then
+        echo -e "${YELLOW}NOTE: Untracked file $file is $(($size / 1024 / 1024))MB, which exceeds the recommended GitHub file size (50MB)${NC}"
+    fi
+done <<< "$untracked_files"
+
+if [ "$has_error" = true ]; then
+    echo -e "${RED}Commit aborted due to files exceeding GitHub's size limit.${NC}"
+    echo -e "${RED}Please remove these files from your commit with 'git reset HEAD <file>'.${NC}"
+    echo -e "${RED}For large files, consider using Git LFS: https://git-lfs.github.com/${NC}"
+    exit 1
+fi
+
+if [ "$has_warning" = true ]; then
+    echo -e "${YELLOW}Warning: Some files exceed the recommended size limit.${NC}"
+    echo -e "${YELLOW}You can still commit, but consider using Git LFS for large files: https://git-lfs.github.com/${NC}"
+    echo -e "${YELLOW}To bypass this warning, use --no-verify with your commit command.${NC}"
+    # Uncomment the next line if you want warnings to also block commits
+    # exit 1
+fi
+
+exit 0

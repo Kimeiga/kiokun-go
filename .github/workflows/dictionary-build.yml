@@ -2,6 +2,12 @@ name: Build Dictionary
 
 on:
   push:
+    branches: [main]
+    paths:
+      - "cmd/**"
+      - "dictionaries/**"
+      - "processor/**"
+      - ".github/workflows/dictionary-build.yml"
   workflow_dispatch: # Manual trigger
   schedule:
     - cron: "0 0 1 * *" # Run monthly
@@ -16,21 +22,18 @@ jobs:
 
       - name: Set up Go
         uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
 
-      - name: Install xz-utils
-        run: sudo apt-get install -y xz-utils
-
-      - name: Build JMdict
-        run: go run main.go jmdict_types.go --dict jmdict --workers 4
-
-      # Future dictionaries can be added here
-      #- name: Build KanjiDic
-      #  run: go run main.go jmdict_types.go --dict kanjidic --workers 4
+      - name: Build Dictionary
+        run: |
+          go run cmd/kiokun/main.go --writers 16 --silent
+          echo "Generated $(find output -type f | wc -l) files"
 
       - name: Commit dictionary files
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add -f dictionaries/*/output/
+          git add -f output/
           git commit -m "Update dictionary files" || echo "No changes to commit"
           git push

@@ -17,3 +17,7 @@ output_test/
 output_han/
 output_kanji_test/
 output_non_han/
+compression_test/test_data/jmdict-examples-eng-3.6.1.json
+compression_test/web-test/src/test_data/jmdict.json
+dictionaries/chinese_chars/source/dictionary_char_2024-06-17.jsonl
+dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
