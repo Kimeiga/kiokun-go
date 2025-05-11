@@ -2,8 +2,9 @@ package chinese_words
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
-	"strings"
+	"sort"
 
 	"kiokun-go/dictionaries/common"
 )
@@ -30,45 +31,31 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 		return nil, err
 	}
 
-	// Convert to ChineseWordEntry structs
-	entries := make([]common.Entry, len(rawEntries))
+	// Create a slice of entries for sorting
+	tempEntries := make([]ChineseWordEntry, len(rawEntries))
 	for i, rawEntry := range rawEntries {
 		entry := ChineseWordEntry{}
 
-		// Map _id to ID
+		// Map _id to ID (we'll replace this with sequential IDs later)
 		if id, ok := rawEntry["_id"]; ok {
 			if idStr, ok := id.(string); ok {
 				entry.ID = idStr
 			}
 		}
 
-		// Map trad to Traditional
-		if trad, ok := rawEntry["trad"]; ok {
-			if tradStr, ok := trad.(string); ok {
-				entry.Traditional = tradStr
+		// Map word to Traditional
+		if word, ok := rawEntry["word"]; ok {
+			if wordStr, ok := word.(string); ok {
+				entry.Traditional = wordStr
+				// If no simplified form is specified, use the traditional form
+				entry.Simplified = wordStr
 			}
 		}
 
-		// Map simp to Simplified
-		if simp, ok := rawEntry["simp"]; ok {
+		// Map simplified if available
+		if simp, ok := rawEntry["simplified"]; ok {
 			if simpStr, ok := simp.(string); ok {
 				entry.Simplified = simpStr
-			}
-		}
-
-		// Map definitions or gloss
-		if defs, ok := rawEntry["definitions"]; ok {
-			if defsArr, ok := defs.([]interface{}); ok {
-				entry.Definitions = make([]string, len(defsArr))
-				for j, def := range defsArr {
-					if defStr, ok := def.(string); ok {
-						entry.Definitions[j] = defStr
-					}
-				}
-			}
-		} else if gloss, ok := rawEntry["gloss"]; ok {
-			if glossStr, ok := gloss.(string); ok {
-				entry.Definitions = []string{glossStr}
 			}
 		}
 
@@ -84,19 +71,36 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 			} else if pinyinStr, ok := pinyin.(string); ok {
 				entry.Pinyin = []string{pinyinStr}
 			}
-		} else if pinyinSearch, ok := rawEntry["pinyinSearchString"]; ok {
-			if pinyinStr, ok := pinyinSearch.(string); ok && pinyinStr != "" {
-				// Split by spaces to get individual pinyin values
-				entry.Pinyin = strings.Fields(pinyinStr)
+		}
+
+		// Map definitions
+		if defs, ok := rawEntry["definitions"]; ok {
+			if defsArr, ok := defs.([]interface{}); ok {
+				entry.Definitions = make([]string, len(defsArr))
+				for j, d := range defsArr {
+					if dStr, ok := d.(string); ok {
+						entry.Definitions[j] = dStr
+					}
+				}
+			} else if defStr, ok := defs.(string); ok {
+				entry.Definitions = []string{defStr}
 			}
 		}
 
 		// Map HSK level
-		if stats, ok := rawEntry["statistics"]; ok {
-			if statsMap, ok := stats.(map[string]interface{}); ok {
-				if hsk, ok := statsMap["hskLevel"]; ok {
-					if hskFloat, ok := hsk.(float64); ok {
-						entry.HskLevel = int(hskFloat)
+		if hsk, ok := rawEntry["hsk"]; ok {
+			if hskFloat, ok := hsk.(float64); ok {
+				entry.HskLevel = int(hskFloat)
+			}
+		}
+
+		// Map frequency
+		if freq, ok := rawEntry["frequency"]; ok {
+			if freqMap, ok := freq.(map[string]interface{}); ok {
+				entry.Frequency = make(map[string]int)
+				for k, v := range freqMap {
+					if vFloat, ok := v.(float64); ok {
+						entry.Frequency[k] = int(vFloat)
 					}
 				}
 			}
@@ -112,11 +116,19 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 			entry.Traditional = entry.ID
 		}
 
-		// If Simplified is not set, use Traditional
-		if entry.Simplified == "" {
-			entry.Simplified = entry.Traditional
-		}
+		tempEntries[i] = entry
+	}
 
+	// Sort entries by Traditional word for consistent IDs
+	sort.Slice(tempEntries, func(i, j int) bool {
+		return tempEntries[i].Traditional < tempEntries[j].Traditional
+	})
+
+	// Assign sequential numeric IDs
+	entries := make([]common.Entry, len(tempEntries))
+	for i, entry := range tempEntries {
+		// Assign sequential ID (starting from 1)
+		entry.ID = fmt.Sprintf("%d", i+1)
 		entries[i] = entry
 	}
 

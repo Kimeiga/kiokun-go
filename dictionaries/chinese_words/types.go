@@ -1,7 +1,5 @@
 package chinese_words
 
-import "fmt"
-
 // ChineseWordEntry represents a single Chinese word entry
 type ChineseWordEntry struct {
 	ID          string         `json:"id"`
@@ -20,6 +18,6 @@ func (w ChineseWordEntry) GetID() string {
 
 // GetFilename returns the filename for this entry
 func (w ChineseWordEntry) GetFilename() string {
-	// Use traditional word as the filename
-	return fmt.Sprintf("%s.json", w.Traditional)
+	// Use ID as the filename
+	return w.ID
 }

@@ -168,7 +168,13 @@ func (p *IndexProcessor) ProcessEntries(entries []common.Entry) error {
 // processEntry processes a single entry
 func (p *IndexProcessor) processEntry(entry common.Entry) error {
 	// Get the entry ID
-	id := entry.GetID()
+	originalID := entry.GetID()
+
+	// Get the shard type
+	shardType := GetShardType(entry)
+
+	// Create the sharded ID by prepending the shard type
+	id := fmt.Sprintf("%d%s", shardType, originalID)
 
 	// Convert string ID to int64 where possible
 	idInt, err := strconv.ParseInt(id, 10, 64)
@@ -368,31 +374,35 @@ func (p *IndexProcessor) processEntry(entry common.Entry) error {
 
 // writeEntryToFile writes an entry to its dictionary file
 func (p *IndexProcessor) writeEntryToFile(entry common.Entry) error {
-	var dir, filename string
+	var dir string
 
-	// Determine the directory and filename based on entry type
-	switch e := entry.(type) {
+	// Get the original ID
+	originalID := entry.GetID()
+
+	// Get the shard type
+	shardType := GetShardType(entry)
+
+	// Create the sharded ID by prepending the shard type
+	shardedID := fmt.Sprintf("%d%s", shardType, originalID)
+
+	// Determine the directory based on entry type
+	switch entry.(type) {
 	case jmdict.Word:
 		dir = p.jmdictDir
-		filename = e.ID
 	case jmnedict.Name:
 		dir = p.jmnedictDir
-		filename = e.ID
 	case kanjidic.Kanji:
 		dir = p.kanjidicDir
-		filename = e.Character // Kanjidic uses Character as ID
 	case chinese_chars.ChineseCharEntry:
 		dir = p.chineseCharsDir
-		filename = e.ID
 	case chinese_words.ChineseWordEntry:
 		dir = p.chineseWordsDir
-		filename = e.ID
 	default:
 		return fmt.Errorf("unknown entry type: %T", entry)
 	}
 
 	// Write the entry to a file
-	filePath := filepath.Join(dir, filename+".json.br")
+	filePath := filepath.Join(dir, shardedID+".json.br")
 	return writeCompressedJSON(filePath, entry)
 }
 

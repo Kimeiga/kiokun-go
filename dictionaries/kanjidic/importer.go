@@ -1,6 +1,7 @@
 package kanjidic
 
 import (
+	"fmt"
 	"os"
 
 	"kiokun-go/dictionaries/common"
@@ -31,6 +32,7 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 		// Extract readings from the ReadingMeaning structure
 		kanji := Kanji{
 			Character: char.Literal,
+			NumericID: fmt.Sprintf("%d", i+1), // Assign sequential numeric ID (starting from 1)
 			Meanings:  []string{},
 			OnYomi:    []string{},
 			KunYomi:   []string{},

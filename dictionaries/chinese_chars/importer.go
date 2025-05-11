@@ -2,7 +2,9 @@ package chinese_chars
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"sort"
 
 	"kiokun-go/dictionaries/common"
 )
@@ -29,12 +31,12 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 		return nil, err
 	}
 
-	// Convert to ChineseCharEntry structs
-	entries := make([]common.Entry, len(rawEntries))
+	// Create a slice of entries for sorting
+	tempEntries := make([]ChineseCharEntry, len(rawEntries))
 	for i, rawEntry := range rawEntries {
 		entry := ChineseCharEntry{}
 
-		// Map _id to ID
+		// Map _id to ID (we'll replace this with sequential IDs later)
 		if id, ok := rawEntry["_id"]; ok {
 			if idStr, ok := id.(string); ok {
 				entry.ID = idStr
@@ -83,6 +85,19 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 			entry.Traditional = entry.ID
 		}
 
+		tempEntries[i] = entry
+	}
+
+	// Sort entries by Traditional character for consistent IDs
+	sort.Slice(tempEntries, func(i, j int) bool {
+		return tempEntries[i].Traditional < tempEntries[j].Traditional
+	})
+
+	// Assign sequential numeric IDs
+	entries := make([]common.Entry, len(tempEntries))
+	for i, entry := range tempEntries {
+		// Assign sequential ID (starting from 1)
+		entry.ID = fmt.Sprintf("%d", i+1)
 		entries[i] = entry
 	}
 

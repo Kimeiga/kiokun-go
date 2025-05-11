@@ -14,6 +14,7 @@ type KanjidicTypes struct {
 // Kanji represents a single kanji character entry in Kanjidic
 type Kanji struct {
 	Character string   `json:"c"`
+	NumericID string   `json:"id,omitempty"` // Added numeric ID
 	Meanings  []string `json:"m,omitempty"`
 	OnYomi    []string `json:"on,omitempty"`
 	KunYomi   []string `json:"kun,omitempty"`
@@ -26,11 +27,19 @@ type Kanji struct {
 
 // GetID returns the unique identifier for this kanji
 func (k Kanji) GetID() string {
+	// If NumericID is set, use it; otherwise fall back to Character
+	if k.NumericID != "" {
+		return k.NumericID
+	}
 	return k.Character
 }
 
 // GetFilename returns the filename to use for this kanji
 func (k Kanji) GetFilename() string {
+	// If NumericID is set, use it; otherwise fall back to Character
+	if k.NumericID != "" {
+		return k.NumericID
+	}
 	return k.Character
 }
 
