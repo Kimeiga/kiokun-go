@@ -133,7 +133,7 @@ jobs:
 
           # Initialize new git repo (removing any existing one)
           rm -rf .git
-          git init
+          git init -b main
 
           # Add the remote
           git remote add origin https://x-access-token:${{ secrets.DICTIONARY_DEPLOY_TOKEN }}@github.com/${{ env.OUTPUT_REPO }}.git
@@ -145,4 +145,4 @@ jobs:
           git commit -m "Update Han 3+ character dictionary files"
 
           # Force push to completely replace contents
-          git push -f origin master:main
+          git push -f origin main:main

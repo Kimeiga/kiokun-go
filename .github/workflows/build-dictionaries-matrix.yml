@@ -285,7 +285,7 @@ jobs:
 
           # Initialize new git repo
           rm -rf .git
-          git init
+          git init -b main
 
           # Configure Git
           git config --global user.name "GitHub Actions Bot"
@@ -301,4 +301,4 @@ jobs:
           git commit -m "Update ${{ matrix.shard-type }} dictionary files"
 
           # Force push to completely replace contents
-          git push -f origin master:main
+          git push -f origin main:main
