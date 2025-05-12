@@ -35,3 +35,16 @@ output_han_1char/
 output_han_2char/
 output_han_3plus/
 output_non_han/
+output_han_2char_han_1char/
+output_han_2char_han_2char/
+output_han_2char_han_3plus/
+output_han_2char_non_han/
+output_han_1char_han_1char/
+output_han_1char_han_2char/
+output_han_1char_han_3plus/
+output_han_1char_non_han/
+output_test_han_1char/
+output_test_han_1char_han_1char/
+output_test_han_1char_han_2char/
+output_test_han_1char_han_3plus/
+output_test_han_1char_non_han/

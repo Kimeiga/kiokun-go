@@ -181,6 +181,10 @@ jobs:
           echo "Running the main program for ${{ matrix.shard-type }}..."
           go run cmd/kiokun/main.go --writers 4 --mode ${{ matrix.shard-type }}
 
+          # Debug: Print the output directory structure from the code
+          echo "Output directory structure from the code:"
+          grep -r "output_" cmd/kiokun/internal/config.go
+
           # List all output directories to see where files were generated
           echo "Listing all output directories after build:"
           find . -type d -name "output*" | sort
@@ -201,33 +205,66 @@ jobs:
           # Find the correct output directory
           echo "Finding the correct output directory for ${{ matrix.shard-type }}..."
 
-          # Try different possible directory patterns
+          # Try different possible directory patterns based on the updated naming convention
+          # Map matrix shard-type to the actual output directory name
+          if [ "${{ matrix.shard-type }}" == "han-1char" ]; then
+            output_dir="output_han_1char"
+          elif [ "${{ matrix.shard-type }}" == "han-2char" ]; then
+            output_dir="output_han_2char"
+          elif [ "${{ matrix.shard-type }}" == "han-3plus" ]; then
+            output_dir="output_han_3plus"
+          elif [ "${{ matrix.shard-type }}" == "non-han" ]; then
+            output_dir="output_non_han"
+          else
+            output_dir="output_${{ matrix.shard-type }}"
+          fi
+
+          echo "Expected output directory for ${{ matrix.shard-type }}: $output_dir"
+
+          # Check if the expected directory exists and has files
+          if [ -d "$output_dir" ]; then
+            file_count=$(find "$output_dir" -type f | wc -l)
+            echo "Found directory $output_dir with $file_count files"
+          else
+            echo "Expected directory $output_dir does not exist"
+          fi
+
+          # Fallback to searching all output directories
           possible_dirs=(
+            "$output_dir"
             "output_${{ matrix.shard-type }}"
-            "output_han_1char_${{ matrix.shard-type }}"
-            "output_${{ matrix.shard-type }}_${{ matrix.shard-type }}"
+            "output_han_1char"
+            "output_han_2char"
+            "output_han_3plus"
+            "output_non_han"
           )
 
-          output_dir=""
+          found_dir=""
           for dir in "${possible_dirs[@]}"; do
             if [ -d "$dir" ]; then
               # Check if directory has files
               file_count=$(find "$dir" -type f | wc -l)
               if [ "$file_count" -gt 0 ]; then
-                output_dir="$dir"
-                echo "Found directory with files: $output_dir"
+                found_dir="$dir"
+                echo "Found directory with files: $found_dir"
                 break
               fi
             fi
           done
 
+          # Use the found directory if we found one
+          if [ -n "$found_dir" ]; then
+            output_dir="$found_dir"
+          fi
+
           # If no directory found, try a more exhaustive search
-          if [ -z "$output_dir" ]; then
+          if [ -z "$found_dir" ]; then
             echo "No directory found with standard naming. Searching all output directories..."
             for dir in $(find . -type d -name "output*"); do
               file_count=$(find "$dir" -type f | wc -l)
               if [ "$file_count" -gt 0 ]; then
-                output_dir="$dir"
+                found_dir="$dir"
+                output_dir="$found_dir"
                 echo "Found directory with files: $output_dir"
                 break
               fi

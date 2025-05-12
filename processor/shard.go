@@ -3,6 +3,7 @@ package processor
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"kiokun-go/dictionaries/chinese_chars"
@@ -115,6 +116,15 @@ func ExtractShardType(shardedID string) (ShardType, error) {
 
 // GetOutputDirForShard returns the output directory name for a shard type
 func GetOutputDirForShard(baseDir string, shardType ShardType) string {
+	// Check if the baseDir already has a shard suffix
+	if strings.HasSuffix(baseDir, "_non_han") ||
+		strings.HasSuffix(baseDir, "_han_1char") ||
+		strings.HasSuffix(baseDir, "_han_2char") ||
+		strings.HasSuffix(baseDir, "_han_3plus") {
+		return baseDir
+	}
+
+	// Otherwise, add the appropriate suffix
 	switch shardType {
 	case ShardNonHan:
 		return fmt.Sprintf("%s_non_han", baseDir)

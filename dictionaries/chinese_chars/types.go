@@ -8,6 +8,7 @@ type ChineseCharEntry struct {
 	Definitions []string `json:"definitions,omitempty"`
 	Pinyin      []string `json:"pinyin,omitempty"`
 	StrokeCount int      `json:"strokeCount,omitempty"`
+	IDS         string   `json:"ids,omitempty"` // Ideographic Description Sequence
 }
 
 // GetID returns the entry ID

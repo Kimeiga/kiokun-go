@@ -571,9 +571,21 @@ func optimizeIndexEntry(entry *IndexEntry) {
 
 // writeCompressedJSON writes an object to a Brotli-compressed JSON file
 func writeCompressedJSON(filename string, obj interface{}) error {
+	// Debug: Print the object being written
+	fmt.Printf("DEBUG: Writing object to file %s: %+v\n", filename, obj)
+
+	// Marshal the object to JSON to check what's being written
+	jsonData, err := json.Marshal(obj)
+	if err != nil {
+		fmt.Printf("DEBUG: Error marshaling object to JSON: %v\n", err)
+		return err
+	}
+	fmt.Printf("DEBUG: JSON data: %s\n", string(jsonData))
+
 	// Create the file
 	file, err := os.Create(filename)
 	if err != nil {
+		fmt.Printf("DEBUG: Error creating file: %v\n", err)
 		return err
 	}
 	defer file.Close()
@@ -584,7 +596,11 @@ func writeCompressedJSON(filename string, obj interface{}) error {
 
 	// Encode the object as JSON
 	encoder := json.NewEncoder(bw)
-	return encoder.Encode(obj)
+	err = encoder.Encode(obj)
+	if err != nil {
+		fmt.Printf("DEBUG: Error encoding object to JSON: %v\n", err)
+	}
+	return err
 }
 
 // isHanCharacter returns true if the character is a CJK character

@@ -7,6 +7,8 @@ import (
 	// Import for side effects (dictionary registration)
 	_ "kiokun-go/dictionaries/chinese_chars"
 	_ "kiokun-go/dictionaries/chinese_words"
+	"kiokun-go/dictionaries/ids"
+	_ "kiokun-go/dictionaries/ids"
 	_ "kiokun-go/dictionaries/jmdict"
 	_ "kiokun-go/dictionaries/jmnedict"
 	_ "kiokun-go/dictionaries/kanjidic"
@@ -38,11 +40,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create IDS lookup map
+	idsMap := make(map[string]string)
+	for _, entry := range entries.IDS {
+		if idsEntry, ok := entry.(ids.IDSEntry); ok {
+			idsMap[idsEntry.Character] = idsEntry.IDS
+		}
+	}
+
+	logf("Created IDS lookup map with %d entries\n", len(idsMap))
+
 	// Filter entries
 	filteredEntries := FilterEntries(entries, config, logf)
 
-	// Process entries
-	if err := ProcessEntries(filteredEntries, config, logf); err != nil {
+	// Process entries with IDS map
+	if err := ProcessEntriesWithIDS(filteredEntries, config, logf, idsMap); err != nil {
 		fmt.Fprintf(os.Stderr, "Error processing entries: %v\n", err)
 		os.Exit(1)
 	}

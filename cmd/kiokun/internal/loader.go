@@ -15,6 +15,7 @@ type DictionaryEntries struct {
 	Kanjidic     []common.Entry
 	ChineseChars []common.Entry
 	ChineseWords []common.Entry
+	IDS          []common.Entry
 }
 
 // LoadDictionaries loads all dictionaries and returns their entries
@@ -31,9 +32,51 @@ func LoadDictionaries(config *Config, logf LogFunc) (*DictionaryEntries, error) 
 	dictConfigs := common.GetRegisteredDictionaries()
 
 	// Import each dictionary
-	var jmdictEntries, jmnedictEntries, kanjidicEntries, chineseCharsEntries, chineseWordsEntries []common.Entry
+	var jmdictEntries, jmnedictEntries, kanjidicEntries, chineseCharsEntries, chineseWordsEntries, idsEntries []common.Entry
+
+	// Check if any specific dictionary is selected
+	onlySpecificDict := config.OnlyJMdict || config.OnlyJMNedict || config.OnlyKanjidic ||
+		config.OnlyChineseChars || config.OnlyChineseWords || config.OnlyIDS
 
 	for _, dict := range dictConfigs {
+		// Skip dictionaries that are not selected when using specific dictionary flags
+		if onlySpecificDict {
+			switch dict.Name {
+			case "jmdict":
+				if !config.OnlyJMdict {
+					logf("Skipping %s (not selected)\n", dict.Name)
+					continue
+				}
+			case "jmnedict":
+				if !config.OnlyJMNedict {
+					logf("Skipping %s (not selected)\n", dict.Name)
+					continue
+				}
+			case "kanjidic":
+				if !config.OnlyKanjidic {
+					logf("Skipping %s (not selected)\n", dict.Name)
+					continue
+				}
+			case "chinese_chars":
+				if !config.OnlyChineseChars {
+					logf("Skipping %s (not selected)\n", dict.Name)
+					continue
+				}
+			case "chinese_words":
+				if !config.OnlyChineseWords {
+					logf("Skipping %s (not selected)\n", dict.Name)
+					continue
+				}
+			case "ids", "ids_ext_a":
+				// Always load IDS dictionaries for character composition data
+				// but only if we're processing Kanjidic or Chinese Chars
+				if !config.OnlyIDS && !config.OnlyKanjidic && !config.OnlyChineseChars {
+					logf("Skipping %s (not selected)\n", dict.Name)
+					continue
+				}
+			}
+		}
+
 		// Construct full path
 		inputPath := filepath.Join(dict.SourceDir, dict.InputFile)
 
@@ -58,6 +101,9 @@ func LoadDictionaries(config *Config, logf LogFunc) (*DictionaryEntries, error) 
 			chineseCharsEntries = entries
 		case "chinese_words":
 			chineseWordsEntries = entries
+		case "ids", "ids_ext_a":
+			// Append IDS entries from different files
+			idsEntries = append(idsEntries, entries...)
 		}
 
 		logf("Imported %s: %d entries (%.2fs)\n", dict.Name, len(entries), time.Since(startTime).Seconds())
@@ -69,5 +115,6 @@ func LoadDictionaries(config *Config, logf LogFunc) (*DictionaryEntries, error) 
 		Kanjidic:     kanjidicEntries,
 		ChineseChars: chineseCharsEntries,
 		ChineseWords: chineseWordsEntries,
+		IDS:          idsEntries,
 	}, nil
 }

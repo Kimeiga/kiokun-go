@@ -34,6 +34,14 @@ type Config struct {
 	TestMode      bool
 	WorkspaceRoot string
 	// UseIndexMode removed - always using index-based approach
+
+	// Dictionary selection flags
+	OnlyJMdict       bool
+	OnlyJMNedict     bool
+	OnlyKanjidic     bool
+	OnlyChineseChars bool
+	OnlyChineseWords bool
+	OnlyIDS          bool
 }
 
 // LogFunc is a function that logs messages based on silent mode
@@ -62,6 +70,14 @@ func ParseConfig() (*Config, LogFunc, error) {
 	outputModeFlag := flag.String("mode", "all", "Output mode: 'all', 'han-only' (legacy), 'han-1char', 'han-2char', 'han-3plus', or 'non-han'")
 	testMode := flag.Bool("test", false, "Test mode - prioritize entries that have overlap between Chinese and Japanese dictionaries")
 	// Index mode flag removed - always using index-based approach
+
+	// Dictionary selection flags
+	onlyJMdict := flag.Bool("only-jmdict", false, "Process only JMdict (Japanese words)")
+	onlyJMNedict := flag.Bool("only-jmnedict", false, "Process only JMNedict (Japanese names)")
+	onlyKanjidic := flag.Bool("only-kanjidic", false, "Process only Kanjidic (Japanese kanji)")
+	onlyChineseChars := flag.Bool("only-chinese-chars", false, "Process only Chinese characters")
+	onlyChineseWords := flag.Bool("only-chinese-words", false, "Process only Chinese words")
+	onlyIDS := flag.Bool("only-ids", false, "Process only IDS (Ideographic Description Sequences)")
 	flag.Parse()
 
 	// Create logging function
@@ -90,6 +106,9 @@ func ParseConfig() (*Config, LogFunc, error) {
 	} else if outputMode == OutputNonHanOnly {
 		*outputDir = *outputDir + "_non_han"
 	}
+
+	// Log the output directory
+	logf("Output directory: %s\n", *outputDir)
 
 	// If dev mode is enabled, use /tmp directory for output
 	if *devMode {
@@ -138,5 +157,13 @@ func ParseConfig() (*Config, LogFunc, error) {
 		OutputMode:    outputMode,
 		TestMode:      *testMode,
 		WorkspaceRoot: workspaceRoot,
+
+		// Dictionary selection flags
+		OnlyJMdict:       *onlyJMdict,
+		OnlyJMNedict:     *onlyJMNedict,
+		OnlyKanjidic:     *onlyKanjidic,
+		OnlyChineseChars: *onlyChineseChars,
+		OnlyChineseWords: *onlyChineseWords,
+		OnlyIDS:          *onlyIDS,
 	}, logf, nil
 }

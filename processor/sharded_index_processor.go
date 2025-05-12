@@ -30,6 +30,7 @@ type ShardedIndexProcessor struct {
 	indexes          map[ShardType]map[string]*IndexEntry
 	writtenEntries   map[ShardType]map[string]bool
 	fileWriters      int
+	idsMap           map[string]string // Map of character to IDS
 	mu               sync.Mutex
 }
 
@@ -48,6 +49,7 @@ func NewShardedIndexProcessor(baseDir string, fileWriters int) (*ShardedIndexPro
 		indexes:          make(map[ShardType]map[string]*IndexEntry),
 		writtenEntries:   make(map[ShardType]map[string]bool),
 		fileWriters:      fileWriters,
+		idsMap:           make(map[string]string),
 	}
 
 	// Initialize indexes and writtenEntries for each shard
@@ -62,6 +64,11 @@ func NewShardedIndexProcessor(baseDir string, fileWriters int) (*ShardedIndexPro
 	}
 
 	return p, nil
+}
+
+// SetIDSMap sets the IDS map for the processor
+func (p *ShardedIndexProcessor) SetIDSMap(idsMap map[string]string) {
+	p.idsMap = idsMap
 }
 
 // createDirectories creates the necessary output directories for each shard
@@ -210,8 +217,20 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 	case chinese_words.ChineseWordEntry:
 		// For Chinese word entries, the traditional and simplified forms are exact matches
 		exactMatches = append(exactMatches, e.Traditional)
+
+		// Debug: Print when processing "日本"
+		if e.Traditional == "日本" || e.Simplified == "日本" {
+			fmt.Printf("DEBUG: Processing Chinese word entry for '日本' in ShardedIndexProcessor: %+v\n", e)
+			fmt.Printf("DEBUG: Added exact match for traditional '日本'\n")
+		}
+
 		if e.Simplified != e.Traditional {
 			exactMatches = append(exactMatches, e.Simplified)
+
+			// Debug: Print when processing "日本"
+			if e.Simplified == "日本" {
+				fmt.Printf("DEBUG: Added exact match for simplified '日本'\n")
+			}
 		}
 
 		// For multi-character entries, each character is a contained-in match
@@ -222,6 +241,11 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 					continue
 				}
 				containedMatches = append(containedMatches, string(char))
+
+				// Debug: Print when adding contained match for "日" or "本"
+				if string(char) == "日" || string(char) == "本" {
+					fmt.Printf("DEBUG: Added contained match for character '%s' from form '%s'\n", string(char), form)
+				}
 			}
 		}
 
@@ -256,6 +280,11 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 
 	// Process exact matches
 	for _, key := range exactMatches {
+		// Debug: Print when processing "日本"
+		if key == "日本" {
+			fmt.Printf("DEBUG: Processing exact match for key '日本' with dictionary type '%s' and ID %d\n", dictType, idInt)
+		}
+
 		// Get or create the index entry
 		indexEntry, ok := p.indexes[shardType][key]
 		if !ok {
@@ -264,6 +293,11 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 				C: make(map[string][]int64),
 			}
 			p.indexes[shardType][key] = indexEntry
+
+			// Debug: Print when creating new index entry for "日本"
+			if key == "日本" {
+				fmt.Printf("DEBUG: Created new index entry for key '日本'\n")
+			}
 		}
 
 		// Initialize maps if nil
@@ -281,6 +315,15 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 		}
 		if !exists {
 			indexEntry.E[dictType] = append(indexEntry.E[dictType], idInt)
+
+			// Debug: Print when adding ID to exact match list for "日本"
+			if key == "日本" {
+				fmt.Printf("DEBUG: Added ID %d to exact match list for key '日本' with dictionary type '%s'\n", idInt, dictType)
+				fmt.Printf("DEBUG: Current exact match list for key '日本' with dictionary type '%s': %v\n", dictType, indexEntry.E[dictType])
+			}
+		} else if key == "日本" {
+			// Debug: Print when ID already exists in exact match list for "日本"
+			fmt.Printf("DEBUG: ID %d already exists in exact match list for key '日本' with dictionary type '%s'\n", idInt, dictType)
 		}
 	}
 
@@ -316,6 +359,45 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 
 	p.mu.Unlock()
 
+	// Add IDS data to single Han character entries
+	var updatedEntry common.Entry
+	switch e := entry.(type) {
+	case kanjidic.Kanji:
+		// For Kanjidic entries, add IDS data if available
+		if ids, ok := p.idsMap[e.Character]; ok {
+			// Create a copy of the entry with IDS data
+			entryCopy := e
+			entryCopy.IDS = ids
+			updatedEntry = entryCopy
+			fmt.Printf("DEBUG: Added IDS data to Kanji entry %s: %s\n", e.Character, ids)
+
+			// Debug: Print the entry before and after modification
+			fmt.Printf("DEBUG: Kanji entry before: %+v\n", e)
+			fmt.Printf("DEBUG: Kanji entry after: %+v\n", entryCopy)
+		}
+	case chinese_chars.ChineseCharEntry:
+		// For Chinese character entries, add IDS data if available
+		if ids, ok := p.idsMap[e.Traditional]; ok {
+			// Create a copy of the entry with IDS data
+			entryCopy := e
+			entryCopy.IDS = ids
+			updatedEntry = entryCopy
+			fmt.Printf("DEBUG: Added IDS data to Chinese character entry %s: %s\n", e.Traditional, ids)
+
+			// Debug: Print the entry before and after modification
+			fmt.Printf("DEBUG: Chinese char entry before: %+v\n", e)
+			fmt.Printf("DEBUG: Chinese char entry after: %+v\n", entryCopy)
+		}
+	}
+
+	// Use the updated entry if available
+	if updatedEntry != nil {
+		entry = updatedEntry
+
+		// Debug: Print the final entry
+		fmt.Printf("DEBUG: Final entry: %+v\n", entry)
+	}
+
 	// Write the entry to its dictionary file if not already written
 	p.mu.Lock()
 	alreadyWritten := p.writtenEntries[shardType][id]
@@ -342,15 +424,19 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 	shardedID := fmt.Sprintf("%d%s", shardType, originalID)
 
 	// Determine the directory based on entry type
-	switch entry.(type) {
+	switch e := entry.(type) {
 	case jmdict.Word:
 		dir = p.jmdictDirs[shardType]
 	case jmnedict.Name:
 		dir = p.jmnedictDirs[shardType]
 	case kanjidic.Kanji:
 		dir = p.kanjidicDirs[shardType]
+		// Debug: Print the Kanji entry being written
+		fmt.Printf("DEBUG: Writing Kanji entry to file: %+v\n", e)
 	case chinese_chars.ChineseCharEntry:
 		dir = p.chineseCharsDirs[shardType]
+		// Debug: Print the Chinese character entry being written
+		fmt.Printf("DEBUG: Writing Chinese character entry to file: %+v\n", e)
 	case chinese_words.ChineseWordEntry:
 		dir = p.chineseWordsDirs[shardType]
 	default:
@@ -359,6 +445,7 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 
 	// Write the entry to a file
 	filePath := filepath.Join(dir, shardedID+".json.br")
+	fmt.Printf("DEBUG: Writing entry to file: %s\n", filePath)
 	return writeCompressedJSON(filePath, entry)
 }
 
@@ -438,6 +525,19 @@ func (p *ShardedIndexProcessor) WriteToFiles() error {
 
 		// Send jobs to workers
 		for key, entry := range index {
+			// Debug: Print when writing index file for "日本"
+			if key == "日本" {
+				fmt.Printf("DEBUG: Writing index file for key '日本'\n")
+				fmt.Printf("DEBUG: Index entry for '日本': %+v\n", entry)
+
+				// Print Chinese word entries in the index
+				if chineseWordIDs, ok := entry.E["w"]; ok && len(chineseWordIDs) > 0 {
+					fmt.Printf("DEBUG: Chinese word exact matches for '日本': %v\n", chineseWordIDs)
+				} else {
+					fmt.Printf("DEBUG: No Chinese word exact matches for '日本'\n")
+				}
+			}
+
 			// Optimize the index entry before writing
 			optimizeIndexEntry(entry)
 			jobs <- job{key, entry}

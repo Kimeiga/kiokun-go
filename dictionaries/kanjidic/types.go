@@ -23,6 +23,7 @@ type Kanji struct {
 	Stroke    int      `json:"stroke"`
 	Frequency int      `json:"freq,omitempty"`
 	Radicals  []string `json:"rad,omitempty"`
+	IDS       string   `json:"ids,omitempty"` // Ideographic Description Sequence
 }
 
 // GetID returns the unique identifier for this kanji

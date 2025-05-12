@@ -1,10 +1,12 @@
 package chinese_words
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"kiokun-go/dictionaries/common"
 )
@@ -25,11 +27,100 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 	}
 	defer file.Close()
 
-	// Parse the JSON file as a generic map to handle MongoDB-style fields
+	// Check if the file is JSONL or JSON
+	isJSONL := strings.HasSuffix(path, ".jsonl")
+
+	fmt.Printf("DEBUG: Importing Chinese word dictionary from %s (isJSONL: %v)\n", path, isJSONL)
+
+	// Parse the file based on its format
 	var rawEntries []map[string]interface{}
-	if err := json.NewDecoder(file).Decode(&rawEntries); err != nil {
-		return nil, err
+
+	if isJSONL {
+		// Parse JSONL (one JSON object per line)
+		scanner := bufio.NewScanner(file)
+		lineCount := 0
+		ribenFound := false
+
+		// Set a larger buffer size for the scanner
+		const maxScanTokenSize = 1024 * 1024 // 1MB
+		buf := make([]byte, maxScanTokenSize)
+		scanner.Buffer(buf, maxScanTokenSize)
+
+		for scanner.Scan() {
+			lineCount++
+			line := scanner.Text()
+
+			// Debug: Check for "日本" in the raw line
+			if strings.Contains(line, "日本") && !strings.Contains(line, "日本國誌") && !strings.Contains(line, "日本国志") {
+				fmt.Printf("DEBUG: Found '日本' in line %d: %s\n", lineCount, line[:100]+"...")
+				ribenFound = true
+			}
+
+			var entry map[string]interface{}
+			if err := json.Unmarshal([]byte(line), &entry); err != nil {
+				return nil, fmt.Errorf("error parsing JSONL line %d: %v", lineCount, err)
+			}
+
+			// Debug: Check for "日本" in the parsed entry
+			if ribenFound {
+				if word, ok := entry["simp"]; ok {
+					if wordStr, ok := word.(string); ok && wordStr == "日本" {
+						fmt.Printf("DEBUG: Found entry with simp='日本': %+v\n", entry)
+					}
+				}
+				if word, ok := entry["trad"]; ok {
+					if wordStr, ok := word.(string); ok && wordStr == "日本" {
+						fmt.Printf("DEBUG: Found entry with trad='日本': %+v\n", entry)
+					}
+				}
+			}
+
+			rawEntries = append(rawEntries, entry)
+		}
+
+		fmt.Printf("DEBUG: Processed %d lines from JSONL file\n", lineCount)
+
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("error reading JSONL file: %v", err)
+		}
+	} else {
+		// Parse JSON array
+		if err := json.NewDecoder(file).Decode(&rawEntries); err != nil {
+			return nil, err
+		}
+		fmt.Printf("DEBUG: Processed JSON array with %d entries\n", len(rawEntries))
 	}
+
+	// Debug: Count entries containing "日本"
+	var ribenEntries []map[string]interface{}
+	for _, entry := range rawEntries {
+		// Check all possible field names for "日本"
+		fieldsToCheck := []string{"word", "simplified", "simp", "trad", "traditional"}
+
+		for _, field := range fieldsToCheck {
+			if word, ok := entry[field]; ok {
+				if wordStr, ok := word.(string); ok && wordStr == "日本" {
+					// Only add if not already added
+					alreadyAdded := false
+					for _, e := range ribenEntries {
+						// Compare by _id since maps can't be directly compared
+						if eID, ok := e["_id"]; ok {
+							if entryID, ok := entry["_id"]; ok && eID == entryID {
+								alreadyAdded = true
+								break
+							}
+						}
+					}
+
+					if !alreadyAdded {
+						ribenEntries = append(ribenEntries, entry)
+						fmt.Printf("DEBUG: Found Chinese word entry with %s='日本': %+v\n", field, entry)
+					}
+				}
+			}
+		}
+	}
+	fmt.Printf("DEBUG: Found %d entries containing '日本' in Chinese word dictionary\n", len(ribenEntries))
 
 	// Create a slice of entries for sorting
 	tempEntries := make([]ChineseWordEntry, len(rawEntries))
@@ -43,8 +134,16 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 			}
 		}
 
-		// Map word to Traditional
-		if word, ok := rawEntry["word"]; ok {
+		// Map traditional form
+		// First try "trad" (JSONL format)
+		if trad, ok := rawEntry["trad"]; ok {
+			if tradStr, ok := trad.(string); ok {
+				entry.Traditional = tradStr
+				// If no simplified form is specified, use the traditional form
+				entry.Simplified = tradStr
+			}
+		} else if word, ok := rawEntry["word"]; ok {
+			// Then try "word" (JSON format)
 			if wordStr, ok := word.(string); ok {
 				entry.Traditional = wordStr
 				// If no simplified form is specified, use the traditional form
@@ -52,43 +151,95 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 			}
 		}
 
-		// Map simplified if available
-		if simp, ok := rawEntry["simplified"]; ok {
+		// Map simplified form
+		// First try "simp" (JSONL format)
+		if simp, ok := rawEntry["simp"]; ok {
+			if simpStr, ok := simp.(string); ok {
+				entry.Simplified = simpStr
+			}
+		} else if simp, ok := rawEntry["simplified"]; ok {
+			// Then try "simplified" (JSON format)
 			if simpStr, ok := simp.(string); ok {
 				entry.Simplified = simpStr
 			}
 		}
 
 		// Map pinyin
-		if pinyin, ok := rawEntry["pinyin"]; ok {
-			if pinyinArr, ok := pinyin.([]interface{}); ok {
-				entry.Pinyin = make([]string, len(pinyinArr))
-				for j, p := range pinyinArr {
-					if pStr, ok := p.(string); ok {
-						entry.Pinyin[j] = pStr
+		// First try JSONL format (items array with pinyin field)
+		if items, ok := rawEntry["items"]; ok {
+			if itemsArr, ok := items.([]interface{}); ok && len(itemsArr) > 0 {
+				for _, item := range itemsArr {
+					if itemMap, ok := item.(map[string]interface{}); ok {
+						if pinyin, ok := itemMap["pinyin"]; ok {
+							if pinyinStr, ok := pinyin.(string); ok {
+								entry.Pinyin = append(entry.Pinyin, pinyinStr)
+							}
+						}
+
+						// Extract definitions from items
+						if defs, ok := itemMap["definitions"]; ok {
+							if defsArr, ok := defs.([]interface{}); ok {
+								for _, def := range defsArr {
+									if defStr, ok := def.(string); ok {
+										entry.Definitions = append(entry.Definitions, defStr)
+									}
+								}
+							}
+						}
 					}
 				}
-			} else if pinyinStr, ok := pinyin.(string); ok {
-				entry.Pinyin = []string{pinyinStr}
+			}
+		} else {
+			// Try JSON format
+			if pinyin, ok := rawEntry["pinyin"]; ok {
+				if pinyinArr, ok := pinyin.([]interface{}); ok {
+					entry.Pinyin = make([]string, len(pinyinArr))
+					for j, p := range pinyinArr {
+						if pStr, ok := p.(string); ok {
+							entry.Pinyin[j] = pStr
+						}
+					}
+				} else if pinyinStr, ok := pinyin.(string); ok {
+					entry.Pinyin = []string{pinyinStr}
+				}
+			}
+
+			// Map definitions (JSON format)
+			if defs, ok := rawEntry["definitions"]; ok {
+				if defsArr, ok := defs.([]interface{}); ok {
+					entry.Definitions = make([]string, len(defsArr))
+					for j, d := range defsArr {
+						if dStr, ok := d.(string); ok {
+							entry.Definitions[j] = dStr
+						}
+					}
+				} else if defStr, ok := defs.(string); ok {
+					entry.Definitions = []string{defStr}
+				}
 			}
 		}
 
-		// Map definitions
-		if defs, ok := rawEntry["definitions"]; ok {
-			if defsArr, ok := defs.([]interface{}); ok {
-				entry.Definitions = make([]string, len(defsArr))
-				for j, d := range defsArr {
-					if dStr, ok := d.(string); ok {
-						entry.Definitions[j] = dStr
-					}
+		// If no definitions found yet, try the gloss field (JSONL format)
+		if len(entry.Definitions) == 0 {
+			if gloss, ok := rawEntry["gloss"]; ok {
+				if glossStr, ok := gloss.(string); ok {
+					entry.Definitions = []string{glossStr}
 				}
-			} else if defStr, ok := defs.(string); ok {
-				entry.Definitions = []string{defStr}
 			}
 		}
 
 		// Map HSK level
-		if hsk, ok := rawEntry["hsk"]; ok {
+		// First try statistics.hskLevel (JSONL format)
+		if stats, ok := rawEntry["statistics"]; ok {
+			if statsMap, ok := stats.(map[string]interface{}); ok {
+				if hskLevel, ok := statsMap["hskLevel"]; ok {
+					if hskFloat, ok := hskLevel.(float64); ok {
+						entry.HskLevel = int(hskFloat)
+					}
+				}
+			}
+		} else if hsk, ok := rawEntry["hsk"]; ok {
+			// Then try hsk (JSON format)
 			if hskFloat, ok := hsk.(float64); ok {
 				entry.HskLevel = int(hskFloat)
 			}
@@ -116,6 +267,11 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 			entry.Traditional = entry.ID
 		}
 
+		// Debug: Print entries for "日本"
+		if entry.Traditional == "日本" || entry.Simplified == "日本" {
+			fmt.Printf("DEBUG: Processed Chinese word entry for '日本': %+v\n", entry)
+		}
+
 		tempEntries[i] = entry
 	}
 
@@ -129,6 +285,12 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 	for i, entry := range tempEntries {
 		// Assign sequential ID (starting from 1)
 		entry.ID = fmt.Sprintf("%d", i+1)
+
+		// Debug: Print entries for "日本" after ID assignment
+		if entry.Traditional == "日本" || entry.Simplified == "日本" {
+			fmt.Printf("DEBUG: Final Chinese word entry for '日本' with ID %s\n", entry.ID)
+		}
+
 		entries[i] = entry
 	}
 
