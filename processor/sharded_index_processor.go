@@ -218,19 +218,9 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 		// For Chinese word entries, the traditional and simplified forms are exact matches
 		exactMatches = append(exactMatches, e.Traditional)
 
-		// Debug: Print when processing "日本"
-		if e.Traditional == "日本" || e.Simplified == "日本" {
-			fmt.Printf("DEBUG: Processing Chinese word entry for '日本' in ShardedIndexProcessor: %+v\n", e)
-			fmt.Printf("DEBUG: Added exact match for traditional '日本'\n")
-		}
-
 		if e.Simplified != e.Traditional {
 			exactMatches = append(exactMatches, e.Simplified)
 
-			// Debug: Print when processing "日本"
-			if e.Simplified == "日本" {
-				fmt.Printf("DEBUG: Added exact match for simplified '日本'\n")
-			}
 		}
 
 		// For multi-character entries, each character is a contained-in match
@@ -242,10 +232,6 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 				}
 				containedMatches = append(containedMatches, string(char))
 
-				// Debug: Print when adding contained match for "日" or "本"
-				if string(char) == "日" || string(char) == "本" {
-					fmt.Printf("DEBUG: Added contained match for character '%s' from form '%s'\n", string(char), form)
-				}
 			}
 		}
 
@@ -280,10 +266,6 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 
 	// Process exact matches
 	for _, key := range exactMatches {
-		// Debug: Print when processing "日本"
-		if key == "日本" {
-			fmt.Printf("DEBUG: Processing exact match for key '日本' with dictionary type '%s' and ID %d\n", dictType, idInt)
-		}
 
 		// Get or create the index entry
 		indexEntry, ok := p.indexes[shardType][key]
@@ -294,10 +276,6 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 			}
 			p.indexes[shardType][key] = indexEntry
 
-			// Debug: Print when creating new index entry for "日本"
-			if key == "日本" {
-				fmt.Printf("DEBUG: Created new index entry for key '日本'\n")
-			}
 		}
 
 		// Initialize maps if nil
@@ -316,11 +294,6 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 		if !exists {
 			indexEntry.E[dictType] = append(indexEntry.E[dictType], idInt)
 
-			// Debug: Print when adding ID to exact match list for "日本"
-			if key == "日本" {
-				fmt.Printf("DEBUG: Added ID %d to exact match list for key '日本' with dictionary type '%s'\n", idInt, dictType)
-				fmt.Printf("DEBUG: Current exact match list for key '日本' with dictionary type '%s': %v\n", dictType, indexEntry.E[dictType])
-			}
 		} else if key == "日本" {
 			// Debug: Print when ID already exists in exact match list for "日本"
 			fmt.Printf("DEBUG: ID %d already exists in exact match list for key '日本' with dictionary type '%s'\n", idInt, dictType)
