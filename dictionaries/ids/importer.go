@@ -2,7 +2,6 @@ package ids
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strings"
 	"unicode/utf8"
@@ -42,7 +41,6 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 		// Parse the line
 		fields := strings.Split(line, "\t")
 		if len(fields) < 3 {
-			fmt.Printf("Warning: Line %d has fewer than 3 fields: %s\n", lineNum, line)
 			continue
 		}
 
@@ -52,7 +50,6 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 
 		// Check if the character field contains exactly one character
 		if utf8.RuneCountInString(character) != 1 {
-			fmt.Printf("Warning: Line %d has invalid character field: %s\n", lineNum, character)
 			continue
 		}
 

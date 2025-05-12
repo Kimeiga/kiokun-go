@@ -369,11 +369,6 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 			entryCopy := e
 			entryCopy.IDS = ids
 			updatedEntry = entryCopy
-			fmt.Printf("DEBUG: Added IDS data to Kanji entry %s: %s\n", e.Character, ids)
-
-			// Debug: Print the entry before and after modification
-			fmt.Printf("DEBUG: Kanji entry before: %+v\n", e)
-			fmt.Printf("DEBUG: Kanji entry after: %+v\n", entryCopy)
 		}
 	case chinese_chars.ChineseCharEntry:
 		// For Chinese character entries, add IDS data if available
@@ -382,20 +377,12 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 			entryCopy := e
 			entryCopy.IDS = ids
 			updatedEntry = entryCopy
-			fmt.Printf("DEBUG: Added IDS data to Chinese character entry %s: %s\n", e.Traditional, ids)
-
-			// Debug: Print the entry before and after modification
-			fmt.Printf("DEBUG: Chinese char entry before: %+v\n", e)
-			fmt.Printf("DEBUG: Chinese char entry after: %+v\n", entryCopy)
 		}
 	}
 
 	// Use the updated entry if available
 	if updatedEntry != nil {
 		entry = updatedEntry
-
-		// Debug: Print the final entry
-		fmt.Printf("DEBUG: Final entry: %+v\n", entry)
 	}
 
 	// Write the entry to its dictionary file if not already written
@@ -424,19 +411,15 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 	shardedID := fmt.Sprintf("%d%s", shardType, originalID)
 
 	// Determine the directory based on entry type
-	switch e := entry.(type) {
+	switch entry.(type) {
 	case jmdict.Word:
 		dir = p.jmdictDirs[shardType]
 	case jmnedict.Name:
 		dir = p.jmnedictDirs[shardType]
 	case kanjidic.Kanji:
 		dir = p.kanjidicDirs[shardType]
-		// Debug: Print the Kanji entry being written
-		fmt.Printf("DEBUG: Writing Kanji entry to file: %+v\n", e)
 	case chinese_chars.ChineseCharEntry:
 		dir = p.chineseCharsDirs[shardType]
-		// Debug: Print the Chinese character entry being written
-		fmt.Printf("DEBUG: Writing Chinese character entry to file: %+v\n", e)
 	case chinese_words.ChineseWordEntry:
 		dir = p.chineseWordsDirs[shardType]
 	default:
@@ -445,7 +428,6 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 
 	// Write the entry to a file
 	filePath := filepath.Join(dir, shardedID+".json.br")
-	fmt.Printf("DEBUG: Writing entry to file: %s\n", filePath)
 	return writeCompressedJSON(filePath, entry)
 }
 
@@ -525,18 +507,6 @@ func (p *ShardedIndexProcessor) WriteToFiles() error {
 
 		// Send jobs to workers
 		for key, entry := range index {
-			// Debug: Print when writing index file for "日本"
-			if key == "日本" {
-				fmt.Printf("DEBUG: Writing index file for key '日本'\n")
-				fmt.Printf("DEBUG: Index entry for '日本': %+v\n", entry)
-
-				// Print Chinese word entries in the index
-				if chineseWordIDs, ok := entry.E["w"]; ok && len(chineseWordIDs) > 0 {
-					fmt.Printf("DEBUG: Chinese word exact matches for '日本': %v\n", chineseWordIDs)
-				} else {
-					fmt.Printf("DEBUG: No Chinese word exact matches for '日本'\n")
-				}
-			}
 
 			// Optimize the index entry before writing
 			optimizeIndexEntry(entry)

@@ -181,10 +181,6 @@ jobs:
           echo "Running the main program for ${{ matrix.shard-type }}..."
           go run cmd/kiokun/main.go --writers 4 --mode ${{ matrix.shard-type }}
 
-          # Debug: Print the output directory structure from the code
-          echo "Output directory structure from the code:"
-          grep -r "output_" cmd/kiokun/internal/config.go
-
           # List all output directories to see where files were generated
           echo "Listing all output directories after build:"
           find . -type d -name "output*" | sort
@@ -198,10 +194,6 @@ jobs:
       # Push to the appropriate output repository
       - name: Push to output repository
         run: |
-          # Debug: List all output directories
-          echo "Listing all output directories:"
-          find . -type d -name "output*" | sort
-
           # Find the correct output directory
           echo "Finding the correct output directory for ${{ matrix.shard-type }}..."
 
@@ -280,10 +272,6 @@ jobs:
           # Navigate to output directory
           echo "Navigating to output directory: $output_dir"
           cd "$output_dir"
-
-          # Debug: List files in output directory
-          echo "Files in output directory:"
-          ls -la
 
           # Count files
           file_count=$(find . -type f | wc -l)

@@ -114,13 +114,11 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 
 					if !alreadyAdded {
 						ribenEntries = append(ribenEntries, entry)
-						fmt.Printf("DEBUG: Found Chinese word entry with %s='日本': %+v\n", field, entry)
 					}
 				}
 			}
 		}
 	}
-	fmt.Printf("DEBUG: Found %d entries containing '日本' in Chinese word dictionary\n", len(ribenEntries))
 
 	// Create a slice of entries for sorting
 	tempEntries := make([]ChineseWordEntry, len(rawEntries))
@@ -267,11 +265,6 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 			entry.Traditional = entry.ID
 		}
 
-		// Debug: Print entries for "日本"
-		if entry.Traditional == "日本" || entry.Simplified == "日本" {
-			fmt.Printf("DEBUG: Processed Chinese word entry for '日本': %+v\n", entry)
-		}
-
 		tempEntries[i] = entry
 	}
 
@@ -285,11 +278,6 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 	for i, entry := range tempEntries {
 		// Assign sequential ID (starting from 1)
 		entry.ID = fmt.Sprintf("%d", i+1)
-
-		// Debug: Print entries for "日本" after ID assignment
-		if entry.Traditional == "日本" || entry.Simplified == "日本" {
-			fmt.Printf("DEBUG: Final Chinese word entry for '日本' with ID %s\n", entry.ID)
-		}
 
 		entries[i] = entry
 	}
