@@ -4,10 +4,6 @@ import { useState, useEffect } from 'react';
 import { getShardType } from '@/lib/dictionary-utils';
 import JishoEntryCard from './JishoEntryCard';
 
-interface DictionaryResultsProps {
-  word: string;
-}
-
 // Dictionary entry type
 type DictionaryEntry = Record<string, unknown>;
 
@@ -20,29 +16,42 @@ interface DictionaryEntriesByType {
   w: DictionaryEntry[]; // Chinese words
 }
 
-interface LookupResponse {
+interface DictionaryResultsProps {
   word: string;
-  exactMatches: DictionaryEntriesByType;
-  containedMatches: DictionaryEntriesByType;
-  error?: string;
 }
 
-export default function JishoDictionaryResults({ word }: DictionaryResultsProps) {
-  const [data, setData] = useState<LookupResponse | null>(null);
+interface InitialLookupResponse {
+  word: string;
+  exactMatches: DictionaryEntriesByType;
+  containedMatchesPending: boolean;
+}
+
+interface ContainedMatchesResponse {
+  containedMatches: DictionaryEntriesByType;
+  containedMatchesPending: boolean;
+}
+
+export default function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
+  const [exactMatches, setExactMatches] = useState<DictionaryEntriesByType | null>(null);
+  const [containedMatches, setContainedMatches] = useState<DictionaryEntriesByType | null>(null);
+  const [containedMatchesPending, setContainedMatchesPending] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const shardType = getShardType(word);
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchStreamingData() {
       try {
         setLoading(true);
+        setExactMatches(null);
+        setContainedMatches(null);
+        setContainedMatchesPending(false);
+        setError(null);
 
         // Use relative URL for API calls
-        const apiUrl = `/api/lookup?word=${encodeURIComponent(word)}`;
-
-        console.log(`Fetching from URL: ${apiUrl}`);
+        const apiUrl = `/api/lookup-stream?word=${encodeURIComponent(word)}`;
+        console.log(`Fetching from streaming URL: ${apiUrl}`);
 
         const response = await fetch(apiUrl);
 
@@ -50,20 +59,66 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           throw new Error(`Failed to fetch dictionary data: ${response.status} ${response.statusText}`);
         }
 
-        const result = await response.json();
-        setData(result);
+        if (!response.body) {
+          throw new Error('ReadableStream not supported in this browser.');
+        }
+
+        // Get a reader from the response body
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        // Read the stream
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          // Decode the chunk and add it to our buffer
+          buffer += decoder.decode(value, { stream: true });
+
+          // Try to parse complete JSON objects from the buffer
+          try {
+            // Check if we have a complete JSON object
+            const result = JSON.parse(buffer);
+            buffer = ''; // Clear the buffer after successful parsing
+
+            // Process the result based on its content
+            if ('exactMatches' in result) {
+              setExactMatches(result.exactMatches);
+              setContainedMatchesPending(result.containedMatchesPending);
+              setLoading(false);
+            }
+
+            if ('containedMatches' in result) {
+              setContainedMatches(result.containedMatches);
+              setContainedMatchesPending(result.containedMatchesPending);
+            }
+
+            if ('error' in result) {
+              setError(result.error);
+              setLoading(false);
+            }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (error) {
+            // If we can't parse the buffer yet, it's likely an incomplete JSON object
+            // Just continue reading more chunks
+            continue;
+          }
+        }
       } catch (error) {
-        console.error('Error fetching dictionary data:', error);
+        console.error('Error fetching streaming dictionary data:', error);
         setError(error instanceof Error ? error.message : 'Unknown error');
-      } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
+    fetchStreamingData();
   }, [word]);
 
-  if (loading) {
+  if (loading && !exactMatches) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
@@ -80,7 +135,7 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
     );
   }
 
-  if (!data) {
+  if (!exactMatches) {
     return (
       <div className="bg-yellow-900/30 border border-yellow-800 rounded-lg p-4 mb-6">
         <h2 className="text-yellow-400 text-lg font-semibold mb-2">No Data</h2>
@@ -92,11 +147,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
   }
 
   // Check if there are any entries
-  const hasAnyExactMatches = Object.values(data.exactMatches).some(entries => entries.length > 0);
-  const hasAnyContainedMatches = Object.values(data.containedMatches).some(entries => entries.length > 0);
+  const hasAnyExactMatches = Object.values(exactMatches).some(entries => entries.length > 0);
+  const hasAnyContainedMatches = containedMatches ?
+    Object.values(containedMatches).some(entries => entries.length > 0) :
+    false;
 
   // Handle no results
-  if (!hasAnyExactMatches && !hasAnyContainedMatches) {
+  if (!hasAnyExactMatches && !hasAnyContainedMatches && !containedMatchesPending) {
     return (
       <div className="bg-yellow-900/30 border border-yellow-800 rounded-lg p-4 mb-6">
         <h2 className="text-yellow-400 text-lg font-semibold mb-2">No Results Found</h2>
@@ -115,40 +172,47 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
   }
 
   // The entries are already organized by dictionary type in the API response
-  const groupedEntries = {
-    exact: {
-      // Chinese characters (c)
-      chineseChar: data.exactMatches.c || [],
-      // Chinese words (w)
-      chineseWord: data.exactMatches.w || [],
-      // Japanese words (j)
-      japaneseWord: data.exactMatches.j || [],
-      // Japanese names (n)
-      japaneseName: data.exactMatches.n || [],
-      // Kanji characters (d)
-      kanjiChar: data.exactMatches.d || [],
-      // Other entries (should be empty with the new structure)
-      other: []
-    },
-    contained: {
-      // Chinese characters (c)
-      chineseChar: data.containedMatches.c || [],
-      // Chinese words (w)
-      chineseWord: data.containedMatches.w || [],
-      // Japanese words (j)
-      japaneseWord: data.containedMatches.j || [],
-      // Japanese names (n)
-      japaneseName: data.containedMatches.n || [],
-      // Kanji characters (d)
-      kanjiChar: data.containedMatches.d || [],
-      // Other entries (should be empty with the new structure)
-      other: []
-    }
+  const groupedExactEntries = {
+    // Chinese characters (c)
+    chineseChar: exactMatches.c || [],
+    // Chinese words (w)
+    chineseWord: exactMatches.w || [],
+    // Japanese words (j)
+    japaneseWord: exactMatches.j || [],
+    // Japanese names (n)
+    japaneseName: exactMatches.n || [],
+    // Kanji characters (d)
+    kanjiChar: exactMatches.d || [],
+    // Other entries (should be empty with the new structure)
+    other: []
+  };
+
+  // Only process contained matches if they're available
+  const groupedContainedEntries = containedMatches ? {
+    // Chinese characters (c)
+    chineseChar: containedMatches.c || [],
+    // Chinese words (w)
+    chineseWord: containedMatches.w || [],
+    // Japanese words (j)
+    japaneseWord: containedMatches.j || [],
+    // Japanese names (n)
+    japaneseName: containedMatches.n || [],
+    // Kanji characters (d)
+    kanjiChar: containedMatches.d || [],
+    // Other entries (should be empty with the new structure)
+    other: []
+  } : {
+    chineseChar: [],
+    chineseWord: [],
+    japaneseWord: [],
+    japaneseName: [],
+    kanjiChar: [],
+    other: []
   };
 
   // Check if any group has entries
-  const hasExactEntries = Object.values(groupedEntries.exact).some(group => group.length > 0);
-  const hasContainedEntries = Object.values(groupedEntries.contained).some(group => group.length > 0);
+  const hasExactEntries = Object.values(groupedExactEntries).some(group => group.length > 0);
+  const hasContainedEntries = Object.values(groupedContainedEntries).some(group => group.length > 0);
 
   return (
     <div>
@@ -169,13 +233,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           <h2 className="text-2xl font-semibold mb-4 text-white">Exact Matches</h2>
 
           {/* Chinese Character entries */}
-          {groupedEntries.exact.chineseChar.length > 0 && (
+          {groupedExactEntries.chineseChar.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Chinese Characters
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.exact.chineseChar.map((entry: DictionaryEntry, index: number) => (
+                {groupedExactEntries.chineseChar.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`exact-cc-${index}`} entry={entry} />
                 ))}
               </div>
@@ -183,13 +247,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Chinese Word entries */}
-          {groupedEntries.exact.chineseWord.length > 0 && (
+          {groupedExactEntries.chineseWord.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Chinese Words
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.exact.chineseWord.map((entry: DictionaryEntry, index: number) => (
+                {groupedExactEntries.chineseWord.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`exact-cw-${index}`} entry={entry} />
                 ))}
               </div>
@@ -197,13 +261,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Japanese Word entries */}
-          {groupedEntries.exact.japaneseWord.length > 0 && (
+          {groupedExactEntries.japaneseWord.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Japanese Words
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.exact.japaneseWord.map((entry: DictionaryEntry, index: number) => (
+                {groupedExactEntries.japaneseWord.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`exact-jw-${index}`} entry={entry} />
                 ))}
               </div>
@@ -211,13 +275,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Kanji Character entries */}
-          {groupedEntries.exact.kanjiChar.length > 0 && (
+          {groupedExactEntries.kanjiChar.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Kanji Characters
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.exact.kanjiChar.map((entry: DictionaryEntry, index: number) => (
+                {groupedExactEntries.kanjiChar.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`exact-kc-${index}`} entry={entry} />
                 ))}
               </div>
@@ -225,13 +289,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Japanese Name entries */}
-          {groupedEntries.exact.japaneseName.length > 0 && (
+          {groupedExactEntries.japaneseName.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Japanese Names
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.exact.japaneseName.map((entry: DictionaryEntry, index: number) => (
+                {groupedExactEntries.japaneseName.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`exact-jn-${index}`} entry={entry} />
                 ))}
               </div>
@@ -239,13 +303,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Other entries */}
-          {groupedEntries.exact.other.length > 0 && (
+          {groupedExactEntries.other.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Other Entries
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.exact.other.map((entry: DictionaryEntry, index: number) => (
+                {groupedExactEntries.other.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`exact-other-${index}`} entry={entry} />
                 ))}
               </div>
@@ -255,18 +319,28 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
       )}
 
       {/* Contained matches section */}
+      {containedMatchesPending && !containedMatches && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 text-white">Contained-in Matches</h2>
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-400"></div>
+            <span className="ml-3 text-gray-300">Loading contained matches...</span>
+          </div>
+        </div>
+      )}
+
       {hasContainedEntries && (
         <div>
           <h2 className="text-2xl font-semibold mb-4 text-white">Contained-in Matches</h2>
 
           {/* Chinese Character entries */}
-          {groupedEntries.contained.chineseChar.length > 0 && (
+          {groupedContainedEntries.chineseChar.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Chinese Characters
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.contained.chineseChar.map((entry: DictionaryEntry, index: number) => (
+                {groupedContainedEntries.chineseChar.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`contained-cc-${index}`} entry={entry} />
                 ))}
               </div>
@@ -274,13 +348,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Chinese Word entries */}
-          {groupedEntries.contained.chineseWord.length > 0 && (
+          {groupedContainedEntries.chineseWord.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Chinese Words
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.contained.chineseWord.map((entry: DictionaryEntry, index: number) => (
+                {groupedContainedEntries.chineseWord.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`contained-cw-${index}`} entry={entry} />
                 ))}
               </div>
@@ -288,13 +362,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Japanese Word entries */}
-          {groupedEntries.contained.japaneseWord.length > 0 && (
+          {groupedContainedEntries.japaneseWord.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Japanese Words
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.contained.japaneseWord.map((entry: DictionaryEntry, index: number) => (
+                {groupedContainedEntries.japaneseWord.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`contained-jw-${index}`} entry={entry} />
                 ))}
               </div>
@@ -302,13 +376,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Kanji Character entries */}
-          {groupedEntries.contained.kanjiChar.length > 0 && (
+          {groupedContainedEntries.kanjiChar.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Kanji Characters
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.contained.kanjiChar.map((entry: DictionaryEntry, index: number) => (
+                {groupedContainedEntries.kanjiChar.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`contained-kc-${index}`} entry={entry} />
                 ))}
               </div>
@@ -316,13 +390,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Japanese Name entries */}
-          {groupedEntries.contained.japaneseName.length > 0 && (
+          {groupedContainedEntries.japaneseName.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Japanese Names
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.contained.japaneseName.map((entry: DictionaryEntry, index: number) => (
+                {groupedContainedEntries.japaneseName.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`contained-jn-${index}`} entry={entry} />
                 ))}
               </div>
@@ -330,13 +404,13 @@ export default function JishoDictionaryResults({ word }: DictionaryResultsProps)
           )}
 
           {/* Other entries */}
-          {groupedEntries.contained.other.length > 0 && (
+          {groupedContainedEntries.other.length > 0 && (
             <div className="mb-6">
               <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
                 Other Entries
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                {groupedEntries.contained.other.map((entry: DictionaryEntry, index: number) => (
+                {groupedContainedEntries.other.map((entry: DictionaryEntry, index: number) => (
                   <JishoEntryCard key={`contained-other-${index}`} entry={entry} />
                 ))}
               </div>

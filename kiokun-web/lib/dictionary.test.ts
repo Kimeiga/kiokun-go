@@ -23,7 +23,7 @@ import { fetchAndDecompressJson } from "./brotli-utils";
 // Test words for different shard types
 const TEST_WORDS = {
   NON_HAN: "コンピューター", // Non-Han word (computer in katakana)
-  HAN_1CHAR: "水", // Single Han character (water)
+  HAN_1CHAR: "因", // Single Han character (water)
   HAN_2CHAR: "日本", // Two Han characters (Japan)
   HAN_3PLUS: "図書館", // Three Han characters (library)
 };
