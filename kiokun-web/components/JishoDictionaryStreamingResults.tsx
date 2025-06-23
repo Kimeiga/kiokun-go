@@ -73,40 +73,108 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
           const { done, value } = await reader.read();
 
           if (done) {
+            // Process any remaining buffer content
+            if (buffer.trim()) {
+              try {
+                const result = JSON.parse(buffer);
+                console.log('Final buffer parse result:', result);
+
+                if ('exactMatches' in result) {
+                  setExactMatches(result.exactMatches);
+                  setContainedMatchesPending(result.containedMatchesPending);
+                  setLoading(false);
+                }
+
+                if ('containedMatches' in result) {
+                  setContainedMatches(result.containedMatches);
+                  setContainedMatchesPending(result.containedMatchesPending);
+                }
+
+                if ('error' in result) {
+                  setError(result.error);
+                  setLoading(false);
+                }
+              } catch (error) {
+                console.error('Error parsing final buffer:', error, 'Buffer:', buffer);
+              }
+            }
             break;
           }
 
           // Decode the chunk and add it to our buffer
-          buffer += decoder.decode(value, { stream: true });
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
+          console.log('Received chunk:', chunk);
+          console.log('Current buffer:', buffer);
 
           // Try to parse complete JSON objects from the buffer
-          try {
-            // Check if we have a complete JSON object
-            const result = JSON.parse(buffer);
-            buffer = ''; // Clear the buffer after successful parsing
+          // Split by potential JSON object boundaries and try to parse each
+          const jsonObjects = [];
+          let currentJson = '';
+          let braceCount = 0;
+          let inString = false;
+          let escaped = false;
 
-            // Process the result based on its content
-            if ('exactMatches' in result) {
-              setExactMatches(result.exactMatches);
-              setContainedMatchesPending(result.containedMatchesPending);
-              setLoading(false);
-            }
+          for (let i = 0; i < buffer.length; i++) {
+            const char = buffer[i];
+            currentJson += char;
 
-            if ('containedMatches' in result) {
-              setContainedMatches(result.containedMatches);
-              setContainedMatchesPending(result.containedMatchesPending);
+            if (!inString) {
+              if (char === '{') {
+                braceCount++;
+              } else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0 && currentJson.trim()) {
+                  // We have a complete JSON object
+                  jsonObjects.push(currentJson.trim());
+                  currentJson = '';
+                }
+              } else if (char === '"') {
+                inString = true;
+              }
+            } else {
+              if (escaped) {
+                escaped = false;
+              } else if (char === '\\') {
+                escaped = true;
+              } else if (char === '"') {
+                inString = false;
+              }
             }
-
-            if ('error' in result) {
-              setError(result.error);
-              setLoading(false);
-            }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          } catch (error) {
-            // If we can't parse the buffer yet, it's likely an incomplete JSON object
-            // Just continue reading more chunks
-            continue;
           }
+
+          // Process each complete JSON object
+          for (const jsonStr of jsonObjects) {
+            try {
+              const result = JSON.parse(jsonStr);
+              console.log('Parsed JSON object:', result);
+
+              // Process the result based on its content
+              if ('exactMatches' in result) {
+                setExactMatches(result.exactMatches);
+                setContainedMatchesPending(result.containedMatchesPending);
+                setLoading(false);
+                console.log('Set exact matches and loading to false');
+              }
+
+              if ('containedMatches' in result) {
+                setContainedMatches(result.containedMatches);
+                setContainedMatchesPending(result.containedMatchesPending);
+                console.log('Set contained matches');
+              }
+
+              if ('error' in result) {
+                setError(result.error);
+                setLoading(false);
+                console.log('Set error and loading to false');
+              }
+            } catch (parseError) {
+              console.error('Error parsing JSON object:', parseError, 'JSON:', jsonStr);
+            }
+          }
+
+          // Update buffer to keep any incomplete JSON
+          buffer = currentJson;
         }
       } catch (error) {
         console.error('Error fetching streaming dictionary data:', error);
@@ -421,3 +489,4 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
     </div>
   );
 }
+
