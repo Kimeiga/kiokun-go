@@ -38,10 +38,132 @@ func FilterEntries(entries *DictionaryEntries, config *Config, logf LogFunc) *Di
 		result = filterForTestMode(result, logf)
 	}
 
+	// Apply test character filtering if specified
+	if config.TestCharacter != "" {
+		result = filterForTestCharacter(result, config.TestCharacter, logf)
+	}
+
 	// Apply entry limit if specified
 	if config.LimitEntries > 0 {
 		result = limitEntries(result, config.LimitEntries, logf)
 	}
+
+	return result
+}
+
+// filterForTestCharacter filters entries to only include those containing the specified character
+func filterForTestCharacter(entries *DictionaryEntries, testChar string, logf LogFunc) *DictionaryEntries {
+	logf("Test character mode enabled - filtering for entries containing '%s'\n", testChar)
+
+	result := &DictionaryEntries{}
+
+	// Helper function to check if text contains the test character
+	containsTestChar := func(text string) bool {
+		for _, r := range text {
+			if string(r) == testChar {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Filter JMdict entries
+	for _, entry := range entries.JMdict {
+		word, ok := entry.(jmdict.Word)
+		if !ok {
+			continue
+		}
+
+		found := false
+		// Check kanji forms
+		for _, kanji := range word.Kanji {
+			if containsTestChar(kanji.Text) {
+				found = true
+				break
+			}
+		}
+		// Check kana forms if not found in kanji
+		if !found {
+			for _, kana := range word.Kana {
+				if containsTestChar(kana.Text) {
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			result.JMdict = append(result.JMdict, entry)
+		}
+	}
+
+	// Filter JMNedict entries
+	for _, entry := range entries.JMNedict {
+		name, ok := entry.(jmnedict.Name)
+		if !ok {
+			continue
+		}
+
+		found := false
+		// Check kanji forms
+		for _, kanji := range name.Kanji {
+			if containsTestChar(kanji) {
+				found = true
+				break
+			}
+		}
+		// Check reading forms if not found in kanji
+		if !found {
+			for _, reading := range name.Reading {
+				if containsTestChar(reading) {
+					found = true
+					break
+				}
+			}
+		}
+		if found {
+			result.JMNedict = append(result.JMNedict, entry)
+		}
+	}
+
+	// Filter Kanjidic entries
+	for _, entry := range entries.Kanjidic {
+		kanji, ok := entry.(kanjidic.Kanji)
+		if !ok {
+			continue
+		}
+
+		if kanji.Character == testChar {
+			result.Kanjidic = append(result.Kanjidic, entry)
+		}
+	}
+
+	// Filter Chinese character entries
+	for _, entry := range entries.ChineseChars {
+		char, ok := entry.(chinese_chars.ChineseCharEntry)
+		if !ok {
+			continue
+		}
+
+		if char.Traditional == testChar || char.Simplified == testChar {
+			result.ChineseChars = append(result.ChineseChars, entry)
+		}
+	}
+
+	// Filter Chinese word entries
+	for _, entry := range entries.ChineseWords {
+		word, ok := entry.(chinese_words.ChineseWordEntry)
+		if !ok {
+			continue
+		}
+
+		if containsTestChar(word.Traditional) || containsTestChar(word.Simplified) {
+			result.ChineseWords = append(result.ChineseWords, entry)
+		}
+	}
+
+	logf("Filtered entries containing '%s': JMdict: %d, JMNedict: %d, Kanjidic: %d, Chinese Chars: %d, Chinese Words: %d\n",
+		testChar, len(result.JMdict), len(result.JMNedict), len(result.Kanjidic),
+		len(result.ChineseChars), len(result.ChineseWords))
 
 	return result
 }

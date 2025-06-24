@@ -32,6 +32,7 @@ type Config struct {
 	BatchSize     int
 	OutputMode    OutputMode
 	TestMode      bool
+	TestCharacter string // For testing specific character like "日"
 	WorkspaceRoot string
 	// UseIndexMode removed - always using index-based approach
 
@@ -69,6 +70,7 @@ func ParseConfig() (*Config, LogFunc, error) {
 	batchSize := flag.Int("batch", 10000, "Process entries in batches of this size")
 	outputModeFlag := flag.String("mode", "all", "Output mode: 'all', 'han-only' (legacy), 'han-1char', 'han-2char', 'han-3plus', or 'non-han'")
 	testMode := flag.Bool("test", false, "Test mode - prioritize entries that have overlap between Chinese and Japanese dictionaries")
+	testCharacter := flag.String("test-char", "", "Test mode for specific character (e.g., '日') - only process entries containing this character")
 	// Index mode flag removed - always using index-based approach
 
 	// Dictionary selection flags
@@ -156,6 +158,7 @@ func ParseConfig() (*Config, LogFunc, error) {
 		BatchSize:     *batchSize,
 		OutputMode:    outputMode,
 		TestMode:      *testMode,
+		TestCharacter: *testCharacter,
 		WorkspaceRoot: workspaceRoot,
 
 		// Dictionary selection flags

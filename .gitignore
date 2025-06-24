@@ -48,3 +48,7 @@ output_test_han_1char_han_1char/
 output_test_han_1char_han_2char/
 output_test_han_1char_han_3plus/
 output_test_han_1char_non_han/
+
+# E2E test output directories
+test_output_*/
+tests/e2e/test_output_*/

@@ -11,6 +11,7 @@ import {
   DictionaryType,
   ShardType,
   extractShardType,
+  isHanCharacter,
 } from "@/lib/dictionary-utils";
 import { fetchAndDecompressJson } from "@/lib/brotli-utils";
 
@@ -239,12 +240,35 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Check if we need to search across multiple shards for contained matches
+        const isSingleCharacter = word.length === 1 && isHanCharacter(word);
+        let hasContainedMatches = indexEntry.c && Object.keys(indexEntry.c).length > 0;
+
+        // For single characters, we might have contained matches in other shards
+        if (isSingleCharacter && !hasContainedMatches) {
+          // Check if there might be contained matches in other shards
+          const allShardTypes = [ShardType.HAN_1CHAR, ShardType.HAN_2CHAR, ShardType.HAN_3PLUS, ShardType.NON_HAN];
+          for (const searchShardType of allShardTypes) {
+            if (searchShardType !== shardType) {
+              try {
+                const searchIndexUrl = getIndexUrl(word, searchShardType);
+                const searchIndexEntry = await fetchAndDecompressJson<IndexEntry>(searchIndexUrl);
+                if (searchIndexEntry.c && Object.keys(searchIndexEntry.c).length > 0) {
+                  hasContainedMatches = true;
+                  break;
+                }
+              } catch (error) {
+                // Index file doesn't exist in this shard, continue
+              }
+            }
+          }
+        }
+
         // Send initial response with exact matches
         const initialResponse: InitialLookupResponse = {
           word,
           exactMatches,
-          containedMatchesPending:
-            indexEntry.c && Object.keys(indexEntry.c).length > 0,
+          containedMatchesPending: hasContainedMatches,
         };
 
         controller.enqueue(
@@ -260,22 +284,51 @@ export async function GET(request: NextRequest) {
           w: [], // Chinese words
         };
 
-        if (indexEntry.c) {
-          for (const [dictType, ids] of Object.entries(indexEntry.c)) {
-            // Validate that dictType is one of the supported types
-            if (dictType in containedMatches) {
-              const entries = await fetchDictionaryEntries(
-                dictType,
-                ids,
-                shardType
-              );
-              // Add entries to the appropriate dictionary type array
-              containedMatches[dictType as keyof DictionaryEntriesByType] =
-                entries;
-            } else {
-              console.warn(
-                `Unknown dictionary type in contained matches: ${dictType}`
-              );
+        if (isSingleCharacter) {
+          // Search for contained matches across all shards
+          const allShardTypes = [ShardType.HAN_1CHAR, ShardType.HAN_2CHAR, ShardType.HAN_3PLUS, ShardType.NON_HAN];
+
+          for (const searchShardType of allShardTypes) {
+            try {
+              const searchIndexUrl = getIndexUrl(word, searchShardType);
+              const searchIndexEntry = await fetchAndDecompressJson<IndexEntry>(searchIndexUrl);
+
+              if (searchIndexEntry.c) {
+                for (const [dictType, ids] of Object.entries(searchIndexEntry.c)) {
+                  if (dictType in containedMatches) {
+                    const entries = await fetchDictionaryEntries(
+                      dictType,
+                      ids,
+                      searchShardType
+                    );
+                    // Append entries to existing array (don't overwrite)
+                    containedMatches[dictType as keyof DictionaryEntriesByType].push(...entries);
+                  }
+                }
+              }
+            } catch (error) {
+              // Index file doesn't exist in this shard, continue to next shard
+              console.log(`No index file for ${word} in shard ${searchShardType}`);
+            }
+          }
+        } else {
+          // For multi-character words, only search in the primary shard
+          if (indexEntry.c) {
+            for (const [dictType, ids] of Object.entries(indexEntry.c)) {
+              // Validate that dictType is one of the supported types
+              if (dictType in containedMatches) {
+                const entries = await fetchDictionaryEntries(
+                  dictType,
+                  ids,
+                  shardType
+                );
+                // Add entries to the appropriate dictionary type array
+                containedMatches[dictType as keyof DictionaryEntriesByType] = entries;
+              } else {
+                console.warn(
+                  `Unknown dictionary type in contained matches: ${dictType}`
+                );
+              }
             }
           }
         }

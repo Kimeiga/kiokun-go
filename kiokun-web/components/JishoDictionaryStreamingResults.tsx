@@ -96,6 +96,8 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
                 }
               } catch (error) {
                 console.error('Error parsing final buffer:', error, 'Buffer:', buffer);
+                // If final buffer parsing fails, we should still show what we have
+                // rather than failing completely
               }
             }
             break;
@@ -154,13 +156,11 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
                 setExactMatches(result.exactMatches);
                 setContainedMatchesPending(result.containedMatchesPending);
                 setLoading(false);
-                console.log('Set exact matches and loading to false');
               }
 
               if ('containedMatches' in result) {
                 setContainedMatches(result.containedMatches);
                 setContainedMatchesPending(result.containedMatchesPending);
-                console.log('Set contained matches');
               }
 
               if ('error' in result) {
@@ -170,6 +170,8 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
               }
             } catch (parseError) {
               console.error('Error parsing JSON object:', parseError, 'JSON:', jsonStr);
+              // If we can't parse a JSON chunk, we should continue processing
+              // but we might want to show a warning to the user in the future
             }
           }
 
@@ -178,7 +180,8 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
         }
       } catch (error) {
         console.error('Error fetching streaming dictionary data:', error);
-        setError(error instanceof Error ? error.message : 'Unknown error');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setError(`Failed to load dictionary data: ${errorMessage}`);
         setLoading(false);
       }
     }
@@ -186,7 +189,7 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
     fetchStreamingData();
   }, [word]);
 
-  if (loading && !exactMatches) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
@@ -387,7 +390,7 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
       )}
 
       {/* Contained matches section */}
-      {containedMatchesPending && !containedMatches && (
+      {containedMatchesPending && !hasContainedEntries && (
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 text-white">Contained-in Matches</h2>
           <div className="flex justify-center items-center py-8">
