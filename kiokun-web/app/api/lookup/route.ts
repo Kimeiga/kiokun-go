@@ -231,13 +231,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Process contained-in matches
+    // Process contained-in matches with pagination
     // For single characters, search across all shards for contained matches
     const isSingleCharacter = word.length === 1 && isHanCharacter(word);
 
     if (isSingleCharacter) {
       // Search for contained matches across all shards
       const allShardTypes = [ShardType.HAN_1CHAR, ShardType.HAN_2CHAR, ShardType.HAN_3PLUS, ShardType.NON_HAN];
+
+      // Collect all contained match IDs first
+      const allContainedIds: { [dictType: string]: { ids: number[], shardType: ShardType }[] } = {};
 
       for (const searchShardType of allShardTypes) {
         try {
@@ -247,13 +250,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           if (searchIndexEntry.c) {
             for (const [dictType, ids] of Object.entries(searchIndexEntry.c)) {
               if (dictType in containedMatches) {
-                const entries = await fetchDictionaryEntries(
-                  dictType,
-                  ids,
-                  searchShardType
-                );
-                // Append entries to existing array (don't overwrite)
-                containedMatches[dictType as keyof DictionaryEntriesByType].push(...entries);
+                if (!allContainedIds[dictType]) {
+                  allContainedIds[dictType] = [];
+                }
+                allContainedIds[dictType].push({ ids, shardType: searchShardType });
               }
             }
           }
@@ -262,15 +262,62 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           console.log(`No index file for ${word} in shard ${searchShardType}`);
         }
       }
+
+      // Round-robin pagination: take 1 from each dict type, repeat up to 20 times
+      const maxRounds = 20;
+      const dictTypes = Object.keys(allContainedIds);
+
+      for (let round = 0; round < maxRounds; round++) {
+        let addedInThisRound = false;
+
+        for (const dictType of dictTypes) {
+          const shardGroups = allContainedIds[dictType];
+          if (!shardGroups) continue;
+
+          // Find the next available ID across all shards for this dict type
+          let totalProcessed = containedMatches[dictType as keyof DictionaryEntriesByType].length;
+          let currentIndex = totalProcessed;
+
+          // Find which shard and index within that shard
+          let cumulativeCount = 0;
+          for (const shardGroup of shardGroups) {
+            if (currentIndex < cumulativeCount + shardGroup.ids.length) {
+              const indexInShard = currentIndex - cumulativeCount;
+              const idToFetch = shardGroup.ids[indexInShard];
+
+              try {
+                const entries = await fetchDictionaryEntries(
+                  dictType,
+                  [idToFetch],
+                  shardGroup.shardType
+                );
+                containedMatches[dictType as keyof DictionaryEntriesByType].push(...entries);
+                addedInThisRound = true;
+              } catch (error) {
+                console.warn(`Error fetching entry ${idToFetch} from ${dictType}:`, error);
+              }
+              break;
+            }
+            cumulativeCount += shardGroup.ids.length;
+          }
+        }
+
+        // If no entries were added in this round, we've exhausted all available entries
+        if (!addedInThisRound) {
+          break;
+        }
+      }
     } else {
       // For multi-character words, only search in the primary shard
       if (indexEntry.c) {
         for (const [dictType, ids] of Object.entries(indexEntry.c)) {
           // Validate that dictType is one of the supported types
           if (dictType in containedMatches) {
+            // Limit to first 20 entries for multi-character words too
+            const limitedIds = ids.slice(0, 20);
             const entries = await fetchDictionaryEntries(
               dictType,
-              ids,
+              limitedIds,
               shardType
             );
             // Add entries to the appropriate dictionary type array

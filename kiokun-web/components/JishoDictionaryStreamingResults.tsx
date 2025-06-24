@@ -1,8 +1,50 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { getShardType } from '@/lib/dictionary-utils';
 import JishoEntryCard from './JishoEntryCard';
+// Simple button component since ui/button doesn't exist
+const Button = ({ children, onClick, disabled, variant, size, className = "", ...props }: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  variant?: string;
+  size?: string;
+  className?: string;
+  [key: string]: any;
+}) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`px-4 py-2 rounded-md font-medium transition-colors ${
+      variant === 'outline'
+        ? 'border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white'
+        : 'bg-blue-600 text-white hover:bg-blue-700'
+    } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
+      size === 'sm' ? 'px-3 py-1 text-sm' : ''
+    } ${className}`}
+    {...props}
+  >
+    {children}
+  </button>
+);
+// Simple icon components since lucide-react might not be available
+const Loader2 = ({ className }: { className?: string }) => (
+  <div className={`animate-spin rounded-full border-2 border-current border-t-transparent ${className}`} />
+);
+
+const ExternalLink = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+  </svg>
+);
+
+const Plus = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+  </svg>
+);
 
 // Dictionary entry type
 type DictionaryEntry = Record<string, unknown>;
@@ -31,7 +73,108 @@ interface ContainedMatchesResponse {
   containedMatchesPending: boolean;
 }
 
-export default function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
+// Dictionary section component with Load More functionality
+interface DictionarySectionProps {
+  title: string;
+  dictType: 'j' | 'n' | 'd' | 'c' | 'w';
+  entries: DictionaryEntry[];
+  word: string;
+  isContained?: boolean;
+}
+
+function DictionarySection({ title, dictType, entries, word, isContained = false }: DictionarySectionProps) {
+  const router = useRouter();
+  const [additionalEntries, setAdditionalEntries] = useState<DictionaryEntry[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const allEntries = [...entries, ...additionalEntries];
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const offset = allEntries.length;
+      const response = await fetch(
+        `/api/lookup/${encodeURIComponent(word)}/${dictType}?offset=${offset}&limit=10`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const newEntries = isContained
+          ? data.containedMatches[dictType] || []
+          : data.exactMatches[dictType] || [];
+
+        setAdditionalEntries(prev => [...prev, ...newEntries]);
+        setHasMore(data.pagination?.hasMore || false);
+      }
+    } catch (error) {
+      console.error('Error loading more entries:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const handleSeeMore = () => {
+    const url = `/lookup/${encodeURIComponent(word)}/${dictType}`;
+    console.log('Navigating to:', url);
+    console.log('Router:', router);
+
+    // Use window.location for more reliable navigation
+    window.location.href = url;
+  };
+
+  if (allEntries.length === 0) return null;
+
+  return (
+    <div className="mb-6">
+      <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
+        {title}
+      </h3>
+      <div className="grid grid-cols-1 gap-4">
+        {allEntries.map((entry: DictionaryEntry, index: number) => (
+          <JishoEntryCard key={`${dictType}-${index}`} entry={entry} />
+        ))}
+      </div>
+
+      {/* Action buttons */}
+      {isContained && (
+        <div className="flex gap-2 mt-4 justify-center">
+          {hasMore && (
+            <Button
+              variant="outline"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              size="sm"
+            >
+              {loadingMore ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Load More
+                </>
+              )}
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={handleSeeMore}
+            size="sm"
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            See More in New Page
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
   const [exactMatches, setExactMatches] = useState<DictionaryEntriesByType | null>(null);
   const [containedMatches, setContainedMatches] = useState<DictionaryEntriesByType | null>(null);
   const [containedMatchesPending, setContainedMatchesPending] = useState<boolean>(false);
@@ -404,92 +547,49 @@ export default function JishoDictionaryStreamingResults({ word }: DictionaryResu
         <div>
           <h2 className="text-2xl font-semibold mb-4 text-white">Contained-in Matches</h2>
 
-          {/* Chinese Character entries */}
-          {groupedContainedEntries.chineseChar.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
-                Chinese Characters
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {groupedContainedEntries.chineseChar.map((entry: DictionaryEntry, index: number) => (
-                  <JishoEntryCard key={`contained-cc-${index}`} entry={entry} />
-                ))}
-              </div>
-            </div>
-          )}
+          <DictionarySection
+            title="Chinese Characters"
+            dictType="c"
+            entries={groupedContainedEntries.chineseChar}
+            word={word}
+            isContained={true}
+          />
 
-          {/* Chinese Word entries */}
-          {groupedContainedEntries.chineseWord.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
-                Chinese Words
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {groupedContainedEntries.chineseWord.map((entry: DictionaryEntry, index: number) => (
-                  <JishoEntryCard key={`contained-cw-${index}`} entry={entry} />
-                ))}
-              </div>
-            </div>
-          )}
+          <DictionarySection
+            title="Chinese Words"
+            dictType="w"
+            entries={groupedContainedEntries.chineseWord}
+            word={word}
+            isContained={true}
+          />
 
-          {/* Japanese Word entries */}
-          {groupedContainedEntries.japaneseWord.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
-                Japanese Words
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {groupedContainedEntries.japaneseWord.map((entry: DictionaryEntry, index: number) => (
-                  <JishoEntryCard key={`contained-jw-${index}`} entry={entry} />
-                ))}
-              </div>
-            </div>
-          )}
+          <DictionarySection
+            title="Japanese Words"
+            dictType="j"
+            entries={groupedContainedEntries.japaneseWord}
+            word={word}
+            isContained={true}
+          />
 
-          {/* Kanji Character entries */}
-          {groupedContainedEntries.kanjiChar.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
-                Kanji Characters
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {groupedContainedEntries.kanjiChar.map((entry: DictionaryEntry, index: number) => (
-                  <JishoEntryCard key={`contained-kc-${index}`} entry={entry} />
-                ))}
-              </div>
-            </div>
-          )}
+          <DictionarySection
+            title="Kanji Characters"
+            dictType="d"
+            entries={groupedContainedEntries.kanjiChar}
+            word={word}
+            isContained={true}
+          />
 
-          {/* Japanese Name entries */}
-          {groupedContainedEntries.japaneseName.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
-                Japanese Names
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {groupedContainedEntries.japaneseName.map((entry: DictionaryEntry, index: number) => (
-                  <JishoEntryCard key={`contained-jn-${index}`} entry={entry} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Other entries */}
-          {groupedContainedEntries.other.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xl font-medium mb-3 border-b border-gray-700 pb-2 text-gray-300">
-                Other Entries
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {groupedContainedEntries.other.map((entry: DictionaryEntry, index: number) => (
-                  <JishoEntryCard key={`contained-other-${index}`} entry={entry} />
-                ))}
-              </div>
-            </div>
-          )}
+          <DictionarySection
+            title="Japanese Names"
+            dictType="n"
+            entries={groupedContainedEntries.japaneseName}
+            word={word}
+            isContained={true}
+          />
         </div>
       )}
     </div>
   );
 }
 
+export default JishoDictionaryStreamingResults;
