@@ -17,13 +17,11 @@ const Button = ({ children, onClick, disabled, variant, size, className = "", ..
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`px-4 py-2 rounded-md font-medium transition-colors ${
-      variant === 'outline'
+    className={`px-4 py-2 rounded-md font-medium transition-colors ${variant === 'outline'
         ? 'border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white'
         : 'bg-blue-600 text-white hover:bg-blue-700'
-    } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
-      size === 'sm' ? 'px-3 py-1 text-sm' : ''
-    } ${className}`}
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${size === 'sm' ? 'px-3 py-1 text-sm' : ''
+      } ${className}`}
     {...props}
   >
     {children}
@@ -222,6 +220,7 @@ function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
                 const result = JSON.parse(buffer);
                 console.log('Final buffer parse result:', result);
 
+
                 if ('exactMatches' in result) {
                   setExactMatches(result.exactMatches);
                   setContainedMatchesPending(result.containedMatchesPending);
@@ -299,11 +298,13 @@ function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
                 setExactMatches(result.exactMatches);
                 setContainedMatchesPending(result.containedMatchesPending);
                 setLoading(false);
+                console.log('Set exact matches and loading to false');
               }
 
               if ('containedMatches' in result) {
                 setContainedMatches(result.containedMatches);
                 setContainedMatchesPending(result.containedMatchesPending);
+                console.log('Set contained matches');
               }
 
               if ('error' in result) {
