@@ -139,8 +139,8 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 	// Get the shard type
 	shardType := GetShardType(entry)
 
-	// Special logging for "日" character
-	if chineseWord, ok := entry.(chinese_words.ChineseWordEntry); ok && chineseWord.Traditional == "日" {
+	// Special logging for "日" character (check by ID since type assertion might not work)
+	if originalID == "57102" {
 		fmt.Printf("🌞 PROCESSOR: Processing '日' entry - originalID: %s, shardType: %d\n", originalID, shardType)
 	}
 
@@ -388,8 +388,8 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 	// Create the sharded ID by prepending the shard type
 	shardedID := fmt.Sprintf("%d%s", shardType, originalID)
 
-	// Special logging for "日" character
-	if chineseWord, ok := entry.(chinese_words.ChineseWordEntry); ok && chineseWord.Traditional == "日" {
+	// Special logging for "日" character (check by ID since type assertion might not work)
+	if originalID == "57102" {
 		fmt.Printf("🌞 WRITE_FILE: Writing '日' entry - originalID: %s, shardedID: %s, shardType: %d\n", originalID, shardedID, shardType)
 	}
 
@@ -412,8 +412,8 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 	// Write the entry to a file
 	filePath := filepath.Join(dir, shardedID+".json.br")
 
-	// Special logging for "日" character
-	if chineseWord, ok := entry.(chinese_words.ChineseWordEntry); ok && chineseWord.Traditional == "日" {
+	// Special logging for "日" character (check by ID since type assertion might not work)
+	if originalID == "57102" {
 		fmt.Printf("🌞 FINAL_FILE: Writing '日' entry to file: %s\n", filePath)
 	}
 
