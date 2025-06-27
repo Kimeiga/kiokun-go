@@ -40,36 +40,31 @@ interface ContainedMatchesResponse {
   containedMatchesPending: boolean;
 }
 
+interface StreamingEntryResponse {
+  type: 'entry';
+  dictType: string;
+  entry: Record<string, unknown>;
+  isExactMatch: boolean;
+}
+
 /**
- * Fetches dictionary entries based on IDs and dictionary type
+ * Fetches dictionary entries in parallel and streams results as they come back
  */
-async function fetchDictionaryEntries(
+async function fetchDictionaryEntriesStreaming(
   dictType: string,
   ids: number[],
-  shardType: ShardType
+  shardType: ShardType,
+  onEntryReady: (dictType: string, entry: Record<string, unknown>) => void
 ): Promise<Record<string, unknown>[]> {
   try {
     console.log(
-      `Fetching ${ids.length} entries for dictionary type: ${dictType}, shard type: ${shardType}`
+      `🚀 Starting parallel fetch of ${ids.length} entries for dictionary type: ${dictType}, shard type: ${shardType}`
     );
 
-    // Add delay between requests to avoid rate limiting
-    const delay = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
+    const startTime = Date.now();
 
-    // Process entries sequentially with delay to avoid rate limiting
-    const entries: Record<string, unknown>[] = [];
-
-    // Check if this is a Chinese word dictionary (which might exceed jsDelivr's 50MB limit)
-    const isChineseWordDict = dictType === DictionaryType.CHINESE_WORDS;
-    if (isChineseWordDict) {
-      console.log(
-        `Processing Chinese word dictionary entries - these may exceed jsDelivr's 50MB limit`
-      );
-    }
-
-    for (const id of ids) {
-      // Convert ID to string and prepend shard type if not already included
+    // Create parallel promises for all entries - NO MORE DELAYS!
+    const promises = ids.map(async (id, index) => {
       const idStr = id.toString();
       const shardedId = idStr.startsWith(shardType.toString())
         ? idStr
@@ -81,75 +76,39 @@ async function fetchDictionaryEntries(
         extractShardType(shardedId)
       );
 
-      console.log(
-        `Processing entry ID: ${shardedId}, Dictionary Type: ${dictType}, URL: ${url}`
-      );
-
       try {
-        // Add a small delay between requests to avoid rate limiting
-        if (entries.length > 0) {
-          await delay(100); // 100ms delay between requests
-        }
-
-        // Our enhanced fetchAndDecompressJson will return an empty object
-        // if jsDelivr returns a 403 error for Chinese word dictionaries
-        const entry = await fetchAndDecompressJson<Record<string, unknown>>(
-          url
+        console.log(
+          `📥 Fetching entry ${index + 1}/${ids.length}: ${shardedId} (${dictType})`
         );
 
-        // Only add non-empty entries
+        const entry = await fetchAndDecompressJson<Record<string, unknown>>(url);
+
+        // Stream the entry immediately when it's ready
         if (entry && Object.keys(entry).length > 0) {
-          entries.push(entry);
-        } else if (isChineseWordDict && Object.keys(entry).length === 0) {
-          console.log(
-            `Skipping empty Chinese word dictionary entry for ${shardedId}`
-          );
+          console.log(`✅ Entry ready: ${shardedId} (${dictType}) - streaming immediately`);
+          onEntryReady(dictType, entry);
+          return entry;
+        } else {
+          console.log(`⚠️ Empty entry skipped: ${shardedId} (${dictType})`);
+          return null;
         }
       } catch (error) {
-        console.error(
-          `Error fetching entry ${shardedId} (Dict: ${dictType}):`,
-          error
-        );
-
-        // Only retry if it's not a 403 error for Chinese word dictionaries
-        // (since those are already handled in fetchAndDecompressJson)
-        if (
-          !(
-            error instanceof Error &&
-            error.message.includes("403") &&
-            isChineseWordDict
-          )
-        ) {
-          // Try again with a longer delay
-          try {
-            console.log(`Retrying ${url} after delay...`);
-            await delay(1000); // 1 second delay before retry
-            const entry = await fetchAndDecompressJson<Record<string, unknown>>(
-              url
-            );
-
-            // Only add non-empty entries
-            if (entry && Object.keys(entry).length > 0) {
-              console.log(`Retry successful for ${url}`);
-              entries.push(entry);
-            } else if (isChineseWordDict && Object.keys(entry).length === 0) {
-              console.log(
-                `Skipping empty Chinese word dictionary entry on retry for ${shardedId}`
-              );
-            }
-          } catch (retryError) {
-            console.error(`Retry failed for ${url}:`, retryError);
-          }
-        }
+        console.error(`❌ Failed to fetch entry ${shardedId} (${dictType}):`, error);
+        return null;
       }
-    }
+    });
+
+    // Wait for all requests to complete
+    const results = await Promise.all(promises);
+    const validEntries = results.filter(entry => entry !== null);
 
     console.log(
-      `Successfully fetched ${entries.length}/${ids.length} entries for dictionary type: ${dictType}`
+      `🎉 Completed ${dictType}: ${validEntries.length}/${ids.length} entries in ${Date.now() - startTime}ms`
     );
-    return entries;
+
+    return validEntries;
   } catch (error) {
-    console.error(`Error fetching ${dictType} entries:`, error);
+    console.error(`💥 Error in fetchDictionaryEntriesStreaming for ${dictType}:`, error);
     return [];
   }
 }
@@ -158,9 +117,12 @@ async function fetchDictionaryEntries(
  * GET handler for the streaming lookup API
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   // Get the word from the query parameters
   const searchParams = request.nextUrl.searchParams;
   const word = searchParams.get("word");
+
+  console.log(`🚀 Starting lookup-stream for word: ${word}`);
 
   // Create a new ReadableStream
   const stream = new ReadableStream({
@@ -178,6 +140,7 @@ export async function GET(request: NextRequest) {
 
         // Determine the shard type based on the word
         const shardType = getShardType(word);
+        console.log(`📊 Shard type determined: ${shardType} (${Date.now() - startTime}ms)`);
 
         // Get the URL for the index file
         const indexUrl = getIndexUrl(word, shardType);
@@ -185,7 +148,9 @@ export async function GET(request: NextRequest) {
         // Fetch and decompress the index file
         let indexEntry: IndexEntry;
         try {
+          const indexStartTime = Date.now();
           indexEntry = await fetchAndDecompressJson<IndexEntry>(indexUrl);
+          console.log(`📥 Index fetched in ${Date.now() - indexStartTime}ms`);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           // If the index file doesn't exist, return an empty response
@@ -220,24 +185,47 @@ export async function GET(request: NextRequest) {
           w: [], // Chinese words
         };
 
-        // Process exact matches first
+        // Process exact matches with real-time streaming
         if (indexEntry.e) {
-          for (const [dictType, ids] of Object.entries(indexEntry.e)) {
-            // Validate that dictType is one of the supported types
+          console.log(`🎯 Processing exact matches for ${Object.keys(indexEntry.e).length} dictionary types`);
+
+          // Create streaming callback for exact matches
+          const streamExactMatch = (dictType: string, entry: Record<string, unknown>) => {
+            // Add to exact matches collection
             if (dictType in exactMatches) {
-              const entries = await fetchDictionaryEntries(
+              exactMatches[dictType as keyof DictionaryEntriesByType].push(entry);
+            }
+
+            // Stream the entry immediately
+            const streamResponse: StreamingEntryResponse = {
+              type: 'entry',
+              dictType,
+              entry,
+              isExactMatch: true
+            };
+
+            controller.enqueue(
+              new TextEncoder().encode(JSON.stringify(streamResponse) + '\n')
+            );
+            console.log(`📤 Streamed exact match: ${dictType}`);
+          };
+
+          // Start parallel fetching for all exact match dictionary types
+          const exactMatchPromises = Object.entries(indexEntry.e).map(async ([dictType, ids]) => {
+            if (dictType in exactMatches) {
+              return fetchDictionaryEntriesStreaming(
                 dictType,
                 ids,
-                shardType
-              );
-              // Add entries to the appropriate dictionary type array
-              exactMatches[dictType as keyof DictionaryEntriesByType] = entries;
-            } else {
-              console.warn(
-                `Unknown dictionary type in exact matches: ${dictType}`
+                shardType,
+                streamExactMatch
               );
             }
-          }
+            return [];
+          });
+
+          // Wait for all exact matches to complete
+          await Promise.all(exactMatchPromises);
+          console.log(`✅ All exact matches completed`);
         }
 
         // Check if we need to search across multiple shards for contained matches
@@ -276,6 +264,7 @@ export async function GET(request: NextRequest) {
         );
 
         // Process contained-in matches
+        console.log(`🔍 Starting contained matches processing (${Date.now() - startTime}ms total)`);
         const containedMatches: DictionaryEntriesByType = {
           j: [], // JMdict (Japanese words)
           n: [], // JMnedict (Japanese names)
@@ -312,8 +301,8 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          // Round-robin pagination: take 1 from each dict type, repeat up to 20 times
-          const maxRounds = 20;
+          // Round-robin pagination: take 1 from each dict type, repeat up to 15 times (reduced for faster initial load)
+          const maxRounds = 15;
           const dictTypes = Object.keys(allContainedIds);
 
           for (let round = 0; round < maxRounds; round++) {
@@ -335,13 +324,34 @@ export async function GET(request: NextRequest) {
                   const idToFetch = shardGroup.ids[indexInShard];
 
                   try {
-                    const entries = await fetchDictionaryEntries(
+                    // Create streaming callback for contained matches
+                    const streamContainedMatch = (dictType: string, entry: Record<string, unknown>) => {
+                      // Add to contained matches collection
+                      if (dictType in containedMatches) {
+                        containedMatches[dictType as keyof DictionaryEntriesByType].push(entry);
+                      }
+
+                      // Stream the entry immediately
+                      const streamResponse: StreamingEntryResponse = {
+                        type: 'entry',
+                        dictType,
+                        entry,
+                        isExactMatch: false
+                      };
+
+                      controller.enqueue(
+                        new TextEncoder().encode(JSON.stringify(streamResponse) + '\n')
+                      );
+                      console.log(`📤 Streamed contained match: ${dictType}`);
+                    };
+
+                    const entries = await fetchDictionaryEntriesStreaming(
                       dictType,
                       [idToFetch],
-                      shardGroup.shardType
+                      shardGroup.shardType,
+                      streamContainedMatch
                     );
-                    containedMatches[dictType as keyof DictionaryEntriesByType].push(...entries);
-                    addedInThisRound = true;
+                    addedInThisRound = entries.length > 0;
                   } catch (error) {
                     console.warn(`Error fetching entry ${idToFetch} from ${dictType}:`, error);
                   }
@@ -362,15 +372,36 @@ export async function GET(request: NextRequest) {
             for (const [dictType, ids] of Object.entries(indexEntry.c)) {
               // Validate that dictType is one of the supported types
               if (dictType in containedMatches) {
-                // Limit to first 20 entries for multi-character words too
-                const limitedIds = ids.slice(0, 20);
-                const entries = await fetchDictionaryEntries(
+                // Limit to first 15 entries for multi-character words (reduced for faster load)
+                const limitedIds = ids.slice(0, 15);
+
+                // Create streaming callback for multi-char contained matches
+                const streamMultiCharMatch = (dictType: string, entry: Record<string, unknown>) => {
+                  // Add to contained matches collection
+                  if (dictType in containedMatches) {
+                    containedMatches[dictType as keyof DictionaryEntriesByType].push(entry);
+                  }
+
+                  // Stream the entry immediately
+                  const streamResponse: StreamingEntryResponse = {
+                    type: 'entry',
+                    dictType,
+                    entry,
+                    isExactMatch: false
+                  };
+
+                  controller.enqueue(
+                    new TextEncoder().encode(JSON.stringify(streamResponse) + '\n')
+                  );
+                  console.log(`📤 Streamed multi-char contained match: ${dictType}`);
+                };
+
+                await fetchDictionaryEntriesStreaming(
                   dictType,
                   limitedIds,
-                  shardType
+                  shardType,
+                  streamMultiCharMatch
                 );
-                // Add entries to the appropriate dictionary type array
-                containedMatches[dictType as keyof DictionaryEntriesByType] = entries;
               } else {
                 console.warn(
                   `Unknown dictionary type in contained matches: ${dictType}`
@@ -381,13 +412,14 @@ export async function GET(request: NextRequest) {
         }
 
         // Send contained matches response
+        console.log(`✅ Lookup-stream completed in ${Date.now() - startTime}ms total`);
         const containedResponse: ContainedMatchesResponse = {
           containedMatches,
           containedMatchesPending: false,
         };
 
         controller.enqueue(
-          new TextEncoder().encode(JSON.stringify(containedResponse))
+          new TextEncoder().encode('\n' + JSON.stringify(containedResponse))
         );
         controller.close();
       } catch (error) {

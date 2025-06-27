@@ -11,9 +11,9 @@ vite.config.ts.timestamp-*
 dictionaries/*/output/
 # Allow specific JSON files needed for the build
 dictionaries/*/source/*.json
-dictionaries/chinese_chars/source/dictionary_char_2024-06-17.json
-dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
-!dictionaries/kanjidic/source/kanjidic2-en-3.6.1.json
+dictionaries/chinese_chars/source/*
+dictionaries/chinese_words/source/*
+!dictionaries/kanjidic/source/*
 
 # Ignore JMdict and JMNedict files (downloaded during build)
 dictionaries/jmdict/source/

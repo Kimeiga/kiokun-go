@@ -31,7 +31,7 @@ async function fetchDictionaryEntries(
   
   for (const id of ids) {
     try {
-      const entryUrl = getDictionaryEntryUrl(dictType, id, shardType);
+      const entryUrl = getDictionaryEntryUrl(id.toString(), dictType as DictionaryType, shardType);
       const entry = await fetchAndDecompressJson(entryUrl);
       entries.push(entry);
     } catch (error) {

@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import JishoEntryCard from "@/components/JishoEntryCard";
 // Simple components since ui components might not be available
 const Button = ({ children, onClick, disabled, variant, size, className = "", ...props }: {
   children: React.ReactNode;
@@ -15,13 +16,11 @@ const Button = ({ children, onClick, disabled, variant, size, className = "", ..
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`px-4 py-2 rounded-md font-medium transition-colors ${
-      variant === 'outline'
-        ? 'border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white'
-        : 'bg-blue-600 text-white hover:bg-blue-700'
-    } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
-      size === 'lg' ? 'px-6 py-3 text-lg' : ''
-    } ${className}`}
+    className={`px-4 py-2 rounded-md font-medium transition-colors ${variant === 'outline'
+      ? 'border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white'
+      : 'bg-blue-600 text-white hover:bg-blue-700'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${size === 'lg' ? 'px-6 py-3 text-lg' : ''
+      } ${className}`}
     {...props}
   >
     {children}
@@ -72,7 +71,7 @@ const DICT_TYPE_NAMES = {
 export default function DictionarySpecificPage() {
   const params = useParams();
   const router = useRouter();
-  const word = params.word as string;
+  const word = decodeURIComponent(params.word as string);
   const dictType = params.dictType as string;
 
   const [data, setData] = useState<DictionarySpecificResponse | null>(null);
@@ -126,14 +125,7 @@ export default function DictionarySpecificPage() {
   };
 
   const renderEntry = (entry: any, index: number) => {
-    // This is a simplified renderer - you might want to use your existing components
-    return (
-      <div key={index} className="border rounded-lg p-4 mb-4 bg-white shadow-sm">
-        <pre className="text-sm overflow-x-auto">
-          {JSON.stringify(entry, null, 2)}
-        </pre>
-      </div>
-    );
+    return <JishoEntryCard key={index} entry={entry} />;
   };
 
   if (loading) {
@@ -184,22 +176,22 @@ export default function DictionarySpecificPage() {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => router.back()}
           className="mb-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Search Results
         </Button>
-        
+
         <h1 className="text-3xl font-bold mb-2">
           {dictTypeName} entries for "{word}"
         </h1>
-        
+
         <div className="text-gray-600">
           <p>
-            {exactEntries.length} exact match{exactEntries.length !== 1 ? 'es' : ''}, 
+            {exactEntries.length} exact match{exactEntries.length !== 1 ? 'es' : ''},
             {' '}{containedEntries.length} of {data.pagination.total} contained matches
           </p>
         </div>
@@ -224,11 +216,11 @@ export default function DictionarySpecificPage() {
           <div className="space-y-4">
             {containedEntries.map((entry, index) => renderEntry(entry, index))}
           </div>
-          
+
           {/* Load More Button */}
           {data.pagination.hasMore && (
             <div className="text-center mt-6">
-              <Button 
+              <Button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
                 size="lg"

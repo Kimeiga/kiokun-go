@@ -18,8 +18,8 @@ const Button = ({ children, onClick, disabled, variant, size, className = "", ..
     onClick={onClick}
     disabled={disabled}
     className={`px-4 py-2 rounded-md font-medium transition-colors ${variant === 'outline'
-        ? 'border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white'
-        : 'bg-blue-600 text-white hover:bg-blue-700'
+      ? 'border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white'
+      : 'bg-blue-600 text-white hover:bg-blue-700'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${size === 'sm' ? 'px-3 py-1 text-sm' : ''
       } ${className}`}
     {...props}
@@ -209,6 +209,19 @@ function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
         const decoder = new TextDecoder();
         let buffer = '';
 
+        // Initialize empty collections for real-time streaming
+        const streamingExactMatches: DictionaryEntriesByType = {
+          j: [], n: [], d: [], c: [], w: []
+        };
+        const streamingContainedMatches: DictionaryEntriesByType = {
+          j: [], n: [], d: [], c: [], w: []
+        };
+
+        // Set initial empty state to show UI immediately
+        setExactMatches(streamingExactMatches);
+        setContainedMatches(streamingContainedMatches);
+        setLoading(false); // Show UI immediately, entries will stream in
+
         // Read the stream
         while (true) {
           const { done, value } = await reader.read();
@@ -220,11 +233,9 @@ function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
                 const result = JSON.parse(buffer);
                 console.log('Final buffer parse result:', result);
 
-
                 if ('exactMatches' in result) {
                   setExactMatches(result.exactMatches);
                   setContainedMatchesPending(result.containedMatchesPending);
-                  setLoading(false);
                 }
 
                 if ('containedMatches' in result) {
@@ -234,12 +245,9 @@ function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
 
                 if ('error' in result) {
                   setError(result.error);
-                  setLoading(false);
                 }
               } catch (error) {
                 console.error('Error parsing final buffer:', error, 'Buffer:', buffer);
-                // If final buffer parsing fails, we should still show what we have
-                // rather than failing completely
               }
             }
             break;
@@ -251,76 +259,83 @@ function JishoDictionaryStreamingResults({ word }: DictionaryResultsProps) {
           console.log('Received chunk:', chunk);
           console.log('Current buffer:', buffer);
 
-          // Try to parse complete JSON objects from the buffer
-          // Split by potential JSON object boundaries and try to parse each
-          const jsonObjects = [];
-          let currentJson = '';
-          let braceCount = 0;
-          let inString = false;
-          let escaped = false;
+          // Try to parse complete JSON objects from the buffer (line-delimited JSON)
+          const lines = buffer.split('\n');
 
-          for (let i = 0; i < buffer.length; i++) {
-            const char = buffer[i];
-            currentJson += char;
+          // Process all complete lines (except the last one which might be incomplete)
+          for (let i = 0; i < lines.length - 1; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
 
-            if (!inString) {
-              if (char === '{') {
-                braceCount++;
-              } else if (char === '}') {
-                braceCount--;
-                if (braceCount === 0 && currentJson.trim()) {
-                  // We have a complete JSON object
-                  jsonObjects.push(currentJson.trim());
-                  currentJson = '';
-                }
-              } else if (char === '"') {
-                inString = true;
-              }
-            } else {
-              if (escaped) {
-                escaped = false;
-              } else if (char === '\\') {
-                escaped = true;
-              } else if (char === '"') {
-                inString = false;
-              }
-            }
-          }
-
-          // Process each complete JSON object
-          for (const jsonStr of jsonObjects) {
             try {
-              const result = JSON.parse(jsonStr);
-              console.log('Parsed JSON object:', result);
+              // Additional validation: check if line looks like valid JSON
+              if (!line.startsWith('{') || !line.endsWith('}')) {
+                console.warn('Skipping invalid JSON line:', line.substring(0, 100) + '...');
+                continue;
+              }
 
-              // Process the result based on its content
-              if ('exactMatches' in result) {
+              const result = JSON.parse(line);
+              console.log('📦 Parsed streaming response:', result);
+
+              // Handle individual streaming entries
+              if (result.type === 'entry') {
+                const { dictType, entry, isExactMatch } = result;
+                console.log(`🎯 Streaming ${isExactMatch ? 'exact' : 'contained'} match: ${dictType}`);
+
+                if (isExactMatch) {
+                  // Add to exact matches immediately
+                  setExactMatches(prev => {
+                    if (!prev) return prev;
+                    const updated = { ...prev };
+                    if (dictType in updated) {
+                      updated[dictType as keyof DictionaryEntriesByType] = [
+                        ...updated[dictType as keyof DictionaryEntriesByType],
+                        entry
+                      ];
+                    }
+                    return updated;
+                  });
+                } else {
+                  // Add to contained matches immediately
+                  setContainedMatches(prev => {
+                    if (!prev) return prev;
+                    const updated = { ...prev };
+                    if (dictType in updated) {
+                      updated[dictType as keyof DictionaryEntriesByType] = [
+                        ...updated[dictType as keyof DictionaryEntriesByType],
+                        entry
+                      ];
+                    }
+                    return updated;
+                  });
+                }
+              }
+              // Handle legacy bulk responses (for compatibility)
+              else if ('exactMatches' in result) {
                 setExactMatches(result.exactMatches);
                 setContainedMatchesPending(result.containedMatchesPending);
-                setLoading(false);
-                console.log('Set exact matches and loading to false');
+                console.log('📋 Set bulk exact matches');
               }
-
-              if ('containedMatches' in result) {
+              else if ('containedMatches' in result) {
                 setContainedMatches(result.containedMatches);
                 setContainedMatchesPending(result.containedMatchesPending);
-                console.log('Set contained matches');
+                console.log('📋 Set bulk contained matches');
               }
-
-              if ('error' in result) {
+              else if ('error' in result) {
                 setError(result.error);
-                setLoading(false);
-                console.log('Set error and loading to false');
+                console.log('❌ Set error');
               }
             } catch (parseError) {
-              console.error('Error parsing JSON object:', parseError, 'JSON:', jsonStr);
-              // If we can't parse a JSON chunk, we should continue processing
-              // but we might want to show a warning to the user in the future
+              // Only log parsing errors for lines that look like they should be JSON
+              if (line.startsWith('{')) {
+                const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown error';
+                console.warn('Failed to parse JSON line (might be incomplete):', errorMessage, 'Line preview:', line.substring(0, 100) + '...');
+              }
             }
           }
 
-          // Update buffer to keep any incomplete JSON
-          buffer = currentJson;
+          // Keep the last (potentially incomplete) line in the buffer
+          buffer = lines[lines.length - 1];
         }
       } catch (error) {
         console.error('Error fetching streaming dictionary data:', error);
