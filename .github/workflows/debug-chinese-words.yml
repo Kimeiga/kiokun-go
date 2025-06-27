@@ -1,0 +1,115 @@
+name: Debug Chinese Words Dictionary
+
+on:
+  workflow_dispatch: # Manual trigger only
+  
+jobs:
+  debug-chinese-words:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.21"
+
+      - name: Download and convert Chinese word dictionary
+        run: |
+          echo "=== DOWNLOADING CHINESE WORDS DICTIONARY ==="
+          mkdir -p dictionaries/chinese_words/source
+          
+          echo "Downloading Chinese word dictionary..."
+          curl -L -o dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl https://data.dong-chinese.com/dump/dictionary_word_2024-06-17.jsonl
+          
+          echo "File downloaded. Checking size..."
+          ls -lh dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
+          
+          echo "Checking first few lines..."
+          head -3 dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
+          
+          echo "Checking last few lines..."
+          tail -3 dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
+          
+          echo "Counting total lines in JSONL file..."
+          wc -l dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl
+
+      - name: Convert JSONL to JSON
+        run: |
+          echo "=== CONVERTING JSONL TO JSON ==="
+          echo "Converting Chinese word dictionary from JSONL to JSON..."
+          go run cmd/jsonl2json/main.go -input=dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl -output=dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
+          
+          echo "Conversion completed. Checking JSON file size..."
+          ls -lh dictionaries/chinese_words/source/dictionary_word_2024-06-17.json
+          
+          echo "Checking JSON structure..."
+          echo "First entry:"
+          head -20 dictionaries/chinese_words/source/dictionary_word_2024-06-17.json | jq '.[0]' || echo "JSON parsing failed"
+          
+          echo "Counting entries in JSON array..."
+          jq '. | length' dictionaries/chinese_words/source/dictionary_word_2024-06-17.json || echo "JSON length check failed"
+
+      - name: Search for specific entries
+        run: |
+          echo "=== SEARCHING FOR SPECIFIC ENTRIES ==="
+          
+          echo "Searching for entries with traditional character '日'..."
+          grep -c '"trad": "日"' dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl || echo "No matches found in JSONL"
+          
+          echo "Searching for the specific MongoDB ID we're looking for..."
+          grep -c '"_id": "5f523074a8a5594704b733a2"' dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl || echo "Specific ID not found in JSONL"
+          
+          echo "Searching for any entries containing '日本'..."
+          grep -c '日本' dictionaries/chinese_words/source/dictionary_word_2024-06-17.jsonl || echo "No 日本 entries found"
+
+      - name: Test Chinese words processing
+        run: |
+          echo "=== TESTING CHINESE WORDS PROCESSING ==="
+          
+          echo "Running Chinese words import test..."
+          go run cmd/kiokun/main.go --mode han-1char --only-chinese-words --test-char "日" --writers 1 --silent
+          
+          echo "Checking if any files were created..."
+          find output_han_1char -name "*.json.br" | wc -l || echo "No output files found"
+          
+          echo "Looking for the specific file we expect..."
+          find output_han_1char -name "*157102*" || echo "File 157102 not found"
+          
+          echo "Checking index file for 日..."
+          find output_han_1char -name "*日*" || echo "Index file for 日 not found"
+
+      - name: Full Chinese words processing test
+        run: |
+          echo "=== FULL CHINESE WORDS PROCESSING TEST ==="
+          
+          echo "Running full Chinese words processing (han-1char only)..."
+          rm -rf output_han_1char
+          go run cmd/kiokun/main.go --mode han-1char --only-chinese-words --writers 1
+          
+          echo "Counting total files created..."
+          find output_han_1char -name "*.json.br" | wc -l
+          
+          echo "Checking file range..."
+          find output_han_1char/w -name "*.json.br" | sed 's/.*\///; s/.json.br//' | sort -n | head -5
+          find output_han_1char/w -name "*.json.br" | sed 's/.*\///; s/.json.br//' | sort -n | tail -5
+          
+          echo "Looking for our target file again..."
+          find output_han_1char -name "*157102*" || echo "Target file still not found"
+
+      - name: Compare with expected local results
+        run: |
+          echo "=== COMPARISON WITH EXPECTED RESULTS ==="
+          
+          echo "Expected from local build:"
+          echo "- Total Chinese words imported: 145,574"
+          echo "- Han-1char filtered: 40,793"
+          echo "- Files created: 40,793"
+          echo "- File range: 1100000 to ~1140000+"
+          echo "- Target file 157102.json.br should exist"
+          
+          echo "GitHub Actions results:"
+          echo "- Total files created: $(find output_han_1char -name "*.json.br" | wc -l)"
+          echo "- File range: $(find output_han_1char/w -name "*.json.br" | sed 's/.*\///; s/.json.br//' | sort -n | head -1) to $(find output_han_1char/w -name "*.json.br" | sed 's/.*\///; s/.json.br//' | sort -n | tail -1)"
