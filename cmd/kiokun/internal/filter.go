@@ -185,6 +185,12 @@ func filterByOutputMode(entries *DictionaryEntries, mode OutputMode, logf LogFun
 	shouldIncludeEntry := func(entry common.Entry) bool {
 		// Get primary text representation for filtering
 		var primaryText string
+
+		// Special debug logging for "日" character to see what type it is
+		if entry.GetID() == "4057102" {
+			fmt.Printf("🌞 FILTER_DEBUG: '日' entry type: %T\n", entry)
+		}
+
 		switch e := entry.(type) {
 		case jmdict.Word:
 			if len(e.Kanji) > 0 {
@@ -212,14 +218,27 @@ func filterByOutputMode(entries *DictionaryEntries, mode OutputMode, logf LogFun
 		case chinese_words.ChineseWordEntry:
 			// Use the traditional word
 			primaryText = e.Traditional
+			// Special debug logging for "日" character
+			if e.Traditional == "日" {
+				fmt.Printf("🌞 FILTER_DEBUG: '日' entry - primaryText: '%s', traditional: '%s'\n", primaryText, e.Traditional)
+			}
 		default:
 			// If we don't know how to filter this type, include it by default
+			// Special debug logging for "日" character
+			if entry.GetID() == "4057102" {
+				fmt.Printf("🌞 FILTER_DEBUG: '日' entry fell through to default case - type: %T\n", entry)
+			}
 			return true
 		}
 
 		// Check if the text contains only Han characters
 		isHan := isHanOnly(primaryText)
 		charCount := len([]rune(primaryText)) // Get correct Unicode character count
+
+		// Special debug logging for "日" character
+		if primaryText == "日" {
+			fmt.Printf("🌞 FILTER_DEBUG: '日' filtering - primaryText: '%s', isHan: %t, charCount: %d, mode: %v\n", primaryText, isHan, charCount, mode)
+		}
 
 		// Apply filtering based on mode
 		switch mode {
@@ -228,7 +247,12 @@ func filterByOutputMode(entries *DictionaryEntries, mode OutputMode, logf LogFun
 		case OutputHanOnly:
 			return isHan
 		case OutputHan1Char:
-			return isHan && charCount == 1
+			result := isHan && charCount == 1
+			// Special debug logging for "日" character
+			if primaryText == "日" {
+				fmt.Printf("🌞 FILTER_DEBUG: '日' han-1char result - isHan: %t && charCount==1: %t = %t\n", isHan, charCount == 1, result)
+			}
+			return result
 		case OutputHan2Char:
 			return isHan && charCount == 2
 		case OutputHan3Plus:
