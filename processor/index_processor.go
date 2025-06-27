@@ -580,12 +580,16 @@ func writeCompressedJSON(filename string, obj interface{}) error {
 
 	// Create a Brotli writer
 	bw := brotli.NewWriter(file)
-	defer bw.Close()
 
 	// Encode the object as JSON
 	encoder := json.NewEncoder(bw)
-	err = encoder.Encode(obj)
-	return err
+	if err := encoder.Encode(obj); err != nil {
+		bw.Close() // Close on error to clean up
+		return err
+	}
+
+	// Explicitly close the brotli writer to flush buffers
+	return bw.Close()
 }
 
 // isHanCharacter returns true if the character is a CJK character
