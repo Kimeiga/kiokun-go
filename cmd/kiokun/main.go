@@ -25,6 +25,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup dictionary files if they don't exist
+	if err := SetupDictionaryFiles(logf); err != nil {
+		fmt.Fprintf(os.Stderr, "Error setting up dictionary files: %v\n", err)
+		os.Exit(1)
+	}
+
 	logf("Starting initialization...\n")
 	logf("Input dictionaries directory: %s\n", config.DictDir)
 	logf("Output directory: %s\n", config.OutputDir)

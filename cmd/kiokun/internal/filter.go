@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -267,6 +268,16 @@ func filterByOutputMode(entries *DictionaryEntries, mode OutputMode, logf LogFun
 	for _, entry := range entries.ChineseWords {
 		if shouldIncludeEntry(entry) {
 			filteredChineseWords = append(filteredChineseWords, entry)
+
+			// Special logging for "日" character
+			if chineseWord, ok := entry.(chinese_words.ChineseWordEntry); ok && chineseWord.Traditional == "日" {
+				fmt.Printf("🌞 FILTER: '日' entry passed filtering - included in output\n")
+			}
+		} else {
+			// Special logging for "日" character if it gets filtered out
+			if chineseWord, ok := entry.(chinese_words.ChineseWordEntry); ok && chineseWord.Traditional == "日" {
+				fmt.Printf("🌞 FILTER: '日' entry FILTERED OUT - not included in output\n")
+			}
 		}
 	}
 

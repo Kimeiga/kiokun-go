@@ -279,6 +279,11 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 		// Assign sequential ID (starting from 1)
 		entry.ID = fmt.Sprintf("%d", i+1)
 
+		// Special logging for "日" character
+		if entry.Traditional == "日" {
+			fmt.Printf("🌞 CHINESE_WORDS: Found '日' entry - assigned ID: %s, position: %d\n", entry.ID, i+1)
+		}
+
 		entries[i] = entry
 	}
 
