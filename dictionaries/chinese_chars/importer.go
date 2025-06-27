@@ -93,11 +93,12 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 		return tempEntries[i].Traditional < tempEntries[j].Traditional
 	})
 
-	// Assign sequential numeric IDs
+	// Assign sequential numeric IDs with offset to avoid collisions with other dictionaries
+	const chineseCharsIDOffset = 3000000 // Reserve 3,000,000+ range for Chinese characters
 	entries := make([]common.Entry, len(tempEntries))
 	for i, entry := range tempEntries {
-		// Assign sequential ID (starting from 1)
-		entry.ID = fmt.Sprintf("%d", i+1)
+		// Assign sequential ID with offset (starting from 3000001)
+		entry.ID = fmt.Sprintf("%d", chineseCharsIDOffset+i+1)
 		entries[i] = entry
 	}
 

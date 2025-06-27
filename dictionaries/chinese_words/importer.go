@@ -273,11 +273,12 @@ func (i *Importer) Import(path string) ([]common.Entry, error) {
 		return tempEntries[i].Traditional < tempEntries[j].Traditional
 	})
 
-	// Assign sequential numeric IDs
+	// Assign sequential numeric IDs with offset to avoid collisions with other dictionaries
+	const chineseWordsIDOffset = 4000000 // Reserve 4,000,000+ range for Chinese words
 	entries := make([]common.Entry, len(tempEntries))
 	for i, entry := range tempEntries {
-		// Assign sequential ID (starting from 1)
-		entry.ID = fmt.Sprintf("%d", i+1)
+		// Assign sequential ID with offset (starting from 4000001)
+		entry.ID = fmt.Sprintf("%d", chineseWordsIDOffset+i+1)
 
 		// Special logging for "日" character
 		if entry.Traditional == "日" {

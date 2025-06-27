@@ -140,7 +140,7 @@ func (p *ShardedIndexProcessor) processEntry(entry common.Entry) error {
 	shardType := GetShardType(entry)
 
 	// Special logging for "日" character (check by ID since type assertion might not work)
-	if originalID == "57102" {
+	if originalID == "4057102" {
 		fmt.Printf("🌞 PROCESSOR: Processing '日' entry - originalID: %s, shardType: %d\n", originalID, shardType)
 	}
 
@@ -389,7 +389,7 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 	shardedID := fmt.Sprintf("%d%s", shardType, originalID)
 
 	// Special logging for "日" character (check by ID since type assertion might not work)
-	if originalID == "57102" {
+	if originalID == "4057102" {
 		fmt.Printf("🌞 WRITE_FILE: Writing '日' entry - originalID: %s, shardedID: %s, shardType: %d\n", originalID, shardedID, shardType)
 	}
 
@@ -413,7 +413,7 @@ func (p *ShardedIndexProcessor) writeEntryToFile(entry common.Entry, shardType S
 	filePath := filepath.Join(dir, shardedID+".json.br")
 
 	// Special logging for "日" character (check by ID since type assertion might not work)
-	if originalID == "57102" {
+	if originalID == "4057102" {
 		fmt.Printf("🌞 FINAL_FILE: Writing '日' entry to file: %s\n", filePath)
 	}
 
