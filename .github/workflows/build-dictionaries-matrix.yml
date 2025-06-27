@@ -301,4 +301,18 @@ jobs:
           git commit -m "Update ${{ matrix.shard-type }} dictionary files"
 
           # Force push to completely replace contents without caring about remote state
-          git push --force origin main:main
+          # Add retry logic to handle concurrent pushes
+          for i in {1..5}; do
+            echo "Push attempt $i..."
+            if git push --force origin main:main; then
+              echo "Push successful on attempt $i"
+              break
+            else
+              echo "Push failed on attempt $i, waiting before retry..."
+              sleep $((i * 10))  # Wait 10, 20, 30, 40, 50 seconds
+              if [ $i -eq 5 ]; then
+                echo "All push attempts failed"
+                exit 1
+              fi
+            fi
+          done
