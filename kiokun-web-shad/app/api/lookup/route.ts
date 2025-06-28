@@ -27,26 +27,7 @@ interface DictionaryEntriesByType {
   w: DictionaryEntry[]; // Chinese words
 }
 
-// Response structure
-interface LookupResponse {
-  word: string;
-  exactMatches: DictionaryEntriesByType;
-  containedMatches: DictionaryEntriesByType;
-  error?: string;
-}
-
-// Initial response structure (for streaming)
-interface InitialLookupResponse {
-  word: string;
-  exactMatches: DictionaryEntriesByType;
-  containedMatchesPending: boolean;
-}
-
-// Contained matches response structure (for streaming)
-interface ContainedMatchesResponse {
-  containedMatches: DictionaryEntriesByType;
-  containedMatchesPending: boolean;
-}
+// Removed unused interfaces - using direct response objects instead
 
 /**
  * Fetches dictionary entries based on IDs and dictionary type
@@ -257,7 +238,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
               }
             }
           }
-        } catch (error) {
+        } catch {
           // Index file doesn't exist in this shard, continue to next shard
           console.log(`No index file for ${word} in shard ${searchShardType}`);
         }
@@ -275,8 +256,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           if (!shardGroups) continue;
 
           // Find the next available ID across all shards for this dict type
-          let totalProcessed = containedMatches[dictType as keyof DictionaryEntriesByType].length;
-          let currentIndex = totalProcessed;
+          const totalProcessed = containedMatches[dictType as keyof DictionaryEntriesByType].length;
+          const currentIndex = totalProcessed;
 
           // Find which shard and index within that shard
           let cumulativeCount = 0;
@@ -293,8 +274,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                 );
                 containedMatches[dictType as keyof DictionaryEntriesByType].push(...entries);
                 addedInThisRound = true;
-              } catch (error) {
-                console.warn(`Error fetching entry ${idToFetch} from ${dictType}:`, error);
+              } catch {
+                console.warn(`Error fetching entry ${idToFetch} from ${dictType}`);
               }
               break;
             }

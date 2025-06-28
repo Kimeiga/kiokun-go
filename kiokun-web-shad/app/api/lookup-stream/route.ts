@@ -15,17 +15,9 @@ import {
 } from "@/lib/dictionary-utils";
 import { fetchAndDecompressJson } from "@/lib/brotli-utils";
 
-// Dictionary entry type
-type DictionaryEntry = Record<string, unknown>;
+// Dictionary entry type - removed unused type
 
-// Dictionary entries by type
-interface DictionaryEntriesByType {
-  j: DictionaryEntry[]; // JMdict (Japanese words)
-  n: DictionaryEntry[]; // JMnedict (Japanese names)
-  d: DictionaryEntry[]; // Kanjidic (Kanji characters)
-  c: DictionaryEntry[]; // Chinese characters
-  w: DictionaryEntry[]; // Chinese words
-}
+// Dictionary entries by type - removed unused interface
 
 /**
  * Fetches dictionary entries and streams them as they become available
@@ -110,7 +102,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         let indexEntry: IndexEntry;
         try {
           indexEntry = await fetchAndDecompressJson<IndexEntry>(indexUrl);
-        } catch (error) {
+        } catch {
           // If no index file, send empty response and close
           const emptyResponse = {
             exactMatches: { j: [], n: [], d: [], c: [], w: [] },
@@ -142,7 +134,7 @@ export async function GET(request: NextRequest): Promise<Response> {
                 }
               };
               
-              await fetchDictionaryEntriesStreaming(dictType, limitedIds, shardType, exactMatchWriter as any);
+              await fetchDictionaryEntriesStreaming(dictType, limitedIds, shardType, exactMatchWriter as unknown as WritableStreamDefaultWriter<Uint8Array>);
             }
           }
         }
@@ -172,7 +164,7 @@ export async function GET(request: NextRequest): Promise<Response> {
                   }
                 }
               }
-            } catch (error) {
+            } catch {
               // Index file doesn't exist in this shard, continue to next shard
               console.log(`No index file for ${word} in shard ${searchShardType}`);
             }
@@ -190,8 +182,8 @@ export async function GET(request: NextRequest): Promise<Response> {
               if (!shardGroups) continue;
 
               // Find the next available ID across all shards for this dict type
-              let totalProcessed = round * dictTypes.length + dictTypes.indexOf(dictType);
-              let currentIndex = totalProcessed;
+              const totalProcessed = round * dictTypes.length + dictTypes.indexOf(dictType);
+              const currentIndex = totalProcessed;
 
               // Find which shard and index within that shard
               let cumulativeCount = 0;
@@ -212,10 +204,10 @@ export async function GET(request: NextRequest): Promise<Response> {
                       }
                     };
 
-                    await fetchDictionaryEntriesStreaming(dictType, [idToFetch], shardGroup.shardType, containedMatchWriter as any);
+                    await fetchDictionaryEntriesStreaming(dictType, [idToFetch], shardGroup.shardType, containedMatchWriter as unknown as WritableStreamDefaultWriter<Uint8Array>);
                     addedInThisRound = true;
-                  } catch (error) {
-                    console.warn(`Error fetching entry ${idToFetch} from ${dictType}:`, error);
+                  } catch {
+                    console.warn(`Error fetching entry ${idToFetch} from ${dictType}`);
                   }
                   break;
                 }

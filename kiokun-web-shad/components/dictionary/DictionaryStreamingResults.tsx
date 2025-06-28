@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { JishoEntryCard } from "./JishoEntryCard";
 
 // Dictionary entry type
@@ -45,7 +45,7 @@ export function DictionaryStreamingResults({ word }: DictionaryStreamingResultsP
         setError(null);
 
         const response = await fetch(`/api/lookup-stream?word=${encodeURIComponent(word)}`);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -60,23 +60,23 @@ export function DictionaryStreamingResults({ word }: DictionaryStreamingResultsP
 
         while (true) {
           const { done, value } = await reader.read();
-          
+
           if (done) break;
-          
+
           buffer += decoder.decode(value, { stream: true });
-          
+
           // Process complete JSON objects
           const lines = buffer.split("\n");
           buffer = lines.pop() || ""; // Keep incomplete line in buffer
-          
+
           for (const line of lines) {
             if (line.trim()) {
               try {
                 const parsed = JSON.parse(line);
-                
+
                 if (parsed.type === "entry") {
                   const { dictType, entry, isExactMatch } = parsed;
-                  
+
                   setData(prev => ({
                     ...prev,
                     [isExactMatch ? "exactMatches" : "containedMatches"]: {
@@ -124,7 +124,7 @@ export function DictionaryStreamingResults({ word }: DictionaryStreamingResultsP
             }
           }
         }
-        
+
         setIsLoading(false);
       } catch (err) {
         console.error("Error fetching streaming data:", err);
@@ -150,9 +150,9 @@ export function DictionaryStreamingResults({ word }: DictionaryStreamingResultsP
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
             <p>Error loading results: {error}</p>
-            <Button 
-              onClick={() => window.location.reload()} 
-              variant="outline" 
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
               className="mt-4"
             >
               Retry

@@ -43,7 +43,7 @@ export interface IndexEntry {
 // Dictionary entry interface
 export interface DictionaryEntry {
   id: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

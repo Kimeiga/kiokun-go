@@ -7,7 +7,7 @@ import { KanjiCard } from "./KanjiCard";
 import { JapaneseNameCard } from "./JapaneseNameCard";
 
 interface JishoEntryCardProps {
-  entry: any;
+  entry: Record<string, unknown>;
   type: string;
   isExactMatch?: boolean;
 }
@@ -19,15 +19,20 @@ interface JishoEntryCardProps {
 export function JishoEntryCard({ entry, type, isExactMatch = false }: JishoEntryCardProps) {
   switch (type) {
     case 'japanese-word':
-      return <JapaneseWordCard entry={entry} isExactMatch={isExactMatch} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <JapaneseWordCard entry={entry as any} isExactMatch={isExactMatch} />;
     case 'japanese-name':
-      return <JapaneseNameCard entry={entry} isExactMatch={isExactMatch} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <JapaneseNameCard entry={entry as any} isExactMatch={isExactMatch} />;
     case 'kanji':
-      return <KanjiCard entry={entry} isExactMatch={isExactMatch} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <KanjiCard entry={entry as any} isExactMatch={isExactMatch} />;
     case 'chinese-char':
-      return <ChineseCharacterCard entry={entry} isExactMatch={isExactMatch} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <ChineseCharacterCard entry={entry as any} isExactMatch={isExactMatch} />;
     case 'chinese-word':
-      return <ChineseWordCard entry={entry} isExactMatch={isExactMatch} />;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <ChineseWordCard entry={entry as any} isExactMatch={isExactMatch} />;
     default:
       return <UnknownEntryCard entry={entry} type={type} isExactMatch={isExactMatch} />;
   }
@@ -36,7 +41,7 @@ export function JishoEntryCard({ entry, type, isExactMatch = false }: JishoEntry
 /**
  * Fallback component for unknown entry types
  */
-function UnknownEntryCard({ entry, type, isExactMatch }: { entry: any; type: string; isExactMatch?: boolean }) {
+function UnknownEntryCard({ entry, type, isExactMatch }: { entry: Record<string, unknown>; type: string; isExactMatch?: boolean }) {
   return (
     <div className="p-4 border rounded-lg bg-muted">
       <div className="flex items-center justify-between mb-2">

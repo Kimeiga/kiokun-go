@@ -5,7 +5,7 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DictionaryStreamingResults } from '@/components/dictionary/DictionaryStreamingResults';
 import { extractShardType } from '@/lib/dictionary-utils';
