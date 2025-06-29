@@ -186,73 +186,76 @@ export function DictionaryStreamingResults({ word }: DictionaryStreamingResultsP
               No exact matches found for &ldquo;{word}&rdquo;
             </p>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Chinese Characters */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Chinese Characters
-                  {data.exactMatches.c.length > 0 && (
-                    <Badge variant="outline">{data.exactMatches.c.length}</Badge>
-                  )}
-                </h3>
-                {data.exactMatches.c.map((entry, index) => (
-                  <JishoEntryCard key={`c-${index}`} entry={entry} type="chinese-char" />
-                ))}
-              </div>
-
-              {/* Japanese Words */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Japanese Words
-                  {data.exactMatches.j.length > 0 && (
-                    <Badge variant="outline">{data.exactMatches.j.length}</Badge>
-                  )}
-                </h3>
-                {data.exactMatches.j.map((entry, index) => (
-                  <JishoEntryCard key={`j-${index}`} entry={entry} type="japanese-word" />
-                ))}
-              </div>
-
-              {/* Kanji */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Kanji
-                  {data.exactMatches.d.length > 0 && (
-                    <Badge variant="outline">{data.exactMatches.d.length}</Badge>
-                  )}
-                </h3>
-                {data.exactMatches.d.map((entry, index) => (
-                  <JishoEntryCard key={`d-${index}`} entry={entry} type="kanji" />
-                ))}
-              </div>
-
-              {/* Japanese Names */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Japanese Names
-                  {data.exactMatches.n.length > 0 && (
-                    <Badge variant="outline">{data.exactMatches.n.length}</Badge>
-                  )}
-                </h3>
-                {data.exactMatches.n.map((entry, index) => (
-                  <JishoEntryCard key={`n-${index}`} entry={entry} type="japanese-name" />
-                ))}
-              </div>
-
-              {/* Chinese Words */}
-              <div className="space-y-4 lg:col-span-2">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Chinese Words
-                  {data.exactMatches.w.length > 0 && (
-                    <Badge variant="outline">{data.exactMatches.w.length}</Badge>
-                  )}
-                </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-6">
+              {/* Two-column section: Words first, then Characters */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Chinese Words (Left Column, Position 1) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Chinese Words
+                    {data.exactMatches.w.length > 0 && (
+                      <Badge variant="outline">{data.exactMatches.w.length}</Badge>
+                    )}
+                  </h3>
                   {data.exactMatches.w.map((entry, index) => (
                     <JishoEntryCard key={`w-${index}`} entry={entry} type="chinese-word" />
                   ))}
                 </div>
+
+                {/* Japanese Words (Right Column, Position 1) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Japanese Words
+                    {data.exactMatches.j.length > 0 && (
+                      <Badge variant="outline">{data.exactMatches.j.length}</Badge>
+                    )}
+                  </h3>
+                  {data.exactMatches.j.map((entry, index) => (
+                    <JishoEntryCard key={`j-${index}`} entry={entry} type="japanese-word" />
+                  ))}
+                </div>
+
+                {/* Chinese Characters (Left Column, Position 2) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Chinese Characters
+                    {data.exactMatches.c.length > 0 && (
+                      <Badge variant="outline">{data.exactMatches.c.length}</Badge>
+                    )}
+                  </h3>
+                  {data.exactMatches.c.map((entry, index) => (
+                    <JishoEntryCard key={`c-${index}`} entry={entry} type="chinese-char" />
+                  ))}
+                </div>
+
+                {/* Kanji (Right Column, Position 2) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Kanji
+                    {data.exactMatches.d.length > 0 && (
+                      <Badge variant="outline">{data.exactMatches.d.length}</Badge>
+                    )}
+                  </h3>
+                  {data.exactMatches.d.map((entry, index) => (
+                    <JishoEntryCard key={`d-${index}`} entry={entry} type="kanji" />
+                  ))}
+                </div>
               </div>
+
+              {/* Japanese Names - Separate four-column section at bottom */}
+              {data.exactMatches.n.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Japanese Names
+                    <Badge variant="outline">{data.exactMatches.n.length}</Badge>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {data.exactMatches.n.map((entry, index) => (
+                      <JishoEntryCard key={`n-${index}`} entry={entry} type="japanese-name" />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -282,73 +285,76 @@ export function DictionaryStreamingResults({ word }: DictionaryStreamingResultsP
               No words containing &ldquo;{word}&rdquo; found
             </p>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Chinese Characters */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Chinese Characters
-                  {data.containedMatches.c.length > 0 && (
-                    <Badge variant="outline">{data.containedMatches.c.length}</Badge>
-                  )}
-                </h3>
-                {data.containedMatches.c.map((entry, index) => (
-                  <JishoEntryCard key={`c-contained-${index}`} entry={entry} type="chinese-char" />
-                ))}
-              </div>
-
-              {/* Japanese Words */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Japanese Words
-                  {data.containedMatches.j.length > 0 && (
-                    <Badge variant="outline">{data.containedMatches.j.length}</Badge>
-                  )}
-                </h3>
-                {data.containedMatches.j.map((entry, index) => (
-                  <JishoEntryCard key={`j-contained-${index}`} entry={entry} type="japanese-word" />
-                ))}
-              </div>
-
-              {/* Kanji */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Kanji
-                  {data.containedMatches.d.length > 0 && (
-                    <Badge variant="outline">{data.containedMatches.d.length}</Badge>
-                  )}
-                </h3>
-                {data.containedMatches.d.map((entry, index) => (
-                  <JishoEntryCard key={`d-contained-${index}`} entry={entry} type="kanji" />
-                ))}
-              </div>
-
-              {/* Japanese Names */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Japanese Names
-                  {data.containedMatches.n.length > 0 && (
-                    <Badge variant="outline">{data.containedMatches.n.length}</Badge>
-                  )}
-                </h3>
-                {data.containedMatches.n.map((entry, index) => (
-                  <JishoEntryCard key={`n-contained-${index}`} entry={entry} type="japanese-name" />
-                ))}
-              </div>
-
-              {/* Chinese Words */}
-              <div className="space-y-4 lg:col-span-2">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  Chinese Words
-                  {data.containedMatches.w.length > 0 && (
-                    <Badge variant="outline">{data.containedMatches.w.length}</Badge>
-                  )}
-                </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-6">
+              {/* Two-column section: Words first, then Characters */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Chinese Words (Left Column, Position 1) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Chinese Words
+                    {data.containedMatches.w.length > 0 && (
+                      <Badge variant="outline">{data.containedMatches.w.length}</Badge>
+                    )}
+                  </h3>
                   {data.containedMatches.w.map((entry, index) => (
                     <JishoEntryCard key={`w-contained-${index}`} entry={entry} type="chinese-word" />
                   ))}
                 </div>
+
+                {/* Japanese Words (Right Column, Position 1) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Japanese Words
+                    {data.containedMatches.j.length > 0 && (
+                      <Badge variant="outline">{data.containedMatches.j.length}</Badge>
+                    )}
+                  </h3>
+                  {data.containedMatches.j.map((entry, index) => (
+                    <JishoEntryCard key={`j-contained-${index}`} entry={entry} type="japanese-word" />
+                  ))}
+                </div>
+
+                {/* Chinese Characters (Left Column, Position 2) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Chinese Characters
+                    {data.containedMatches.c.length > 0 && (
+                      <Badge variant="outline">{data.containedMatches.c.length}</Badge>
+                    )}
+                  </h3>
+                  {data.containedMatches.c.map((entry, index) => (
+                    <JishoEntryCard key={`c-contained-${index}`} entry={entry} type="chinese-char" />
+                  ))}
+                </div>
+
+                {/* Kanji (Right Column, Position 2) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Kanji
+                    {data.containedMatches.d.length > 0 && (
+                      <Badge variant="outline">{data.containedMatches.d.length}</Badge>
+                    )}
+                  </h3>
+                  {data.containedMatches.d.map((entry, index) => (
+                    <JishoEntryCard key={`d-contained-${index}`} entry={entry} type="kanji" />
+                  ))}
+                </div>
               </div>
+
+              {/* Japanese Names - Separate four-column section at bottom */}
+              {data.containedMatches.n.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    Japanese Names
+                    <Badge variant="outline">{data.containedMatches.n.length}</Badge>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {data.containedMatches.n.map((entry, index) => (
+                      <JishoEntryCard key={`n-contained-${index}`} entry={entry} type="japanese-name" />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
