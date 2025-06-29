@@ -30,7 +30,7 @@ interface JapaneseWordCardProps {
 
 export function JapaneseWordCard({ entry, isExactMatch = false }: JapaneseWordCardProps) {
   const kanjiText = entry.kanji?.[0]?.text || "";
-  const kanaText = entry.kana?.[0]?.text || "";
+  const allKanaReadings = entry.kana || [];
   const isCommon = entry.kanji?.[0]?.common || entry.kana?.[0]?.common;
 
   return (
@@ -48,10 +48,18 @@ export function JapaneseWordCard({ entry, isExactMatch = false }: JapaneseWordCa
               {isCommon && <span className="text-yellow-500">★</span>}
             </span>
           )}
-          {kanaText && (
+          {allKanaReadings.length > 0 && (
             <span className="text-lg text-muted-foreground">
-              {kanaText}
-              {isCommon && !kanjiText && <span className="text-yellow-500">★</span>}
+              {allKanaReadings.map((kana, index) => (
+                <span key={index}>
+                  {kana.text}
+                  {kana.common && <span className="text-yellow-500">★</span>}
+                  {index < allKanaReadings.length - 1 && <span className="mx-1">、</span>}
+                </span>
+              ))}
+              {isCommon && !kanjiText && allKanaReadings.every(k => !k.common) && (
+                <span className="text-yellow-500">★</span>
+              )}
             </span>
           )}
           {isExactMatch && (
