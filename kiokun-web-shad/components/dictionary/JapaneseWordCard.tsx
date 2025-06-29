@@ -78,7 +78,15 @@ export function JapaneseWordCard({ entry, isExactMatch = false }: JapaneseWordCa
             const posGroups: Array<{
               partOfSpeechKey: string;
               allPartsOfSpeech: string[];
-              senseDefinitions: Array<{ text: string; inlineTags: Array<{ text: string; type: 'field' | 'misc' | 'dialect' | 'info' }> }>;
+              senseDefinitions: Array<{
+                text: string;
+                inlineTags: Array<{ text: string; type: 'field' | 'misc' | 'dialect' | 'info' }>;
+                examples?: Array<{
+                  text: string;
+                  sentences: Array<{ text: string; lang?: string }>;
+                  translation?: string;
+                }>;
+              }>;
             }> = [];
 
             entry.sense.forEach(sense => {
@@ -101,12 +109,12 @@ export function JapaneseWordCard({ entry, isExactMatch = false }: JapaneseWordCa
               // Check if we can merge with the previous group (same parts of speech)
               const lastGroup = posGroups[posGroups.length - 1];
               if (lastGroup && lastGroup.partOfSpeechKey === posKey) {
-                lastGroup.senseDefinitions.push({ text: senseDefinitionString, inlineTags });
+                lastGroup.senseDefinitions.push({ text: senseDefinitionString, inlineTags, examples: sense.examples });
               } else {
                 posGroups.push({
                   partOfSpeechKey: posKey,
                   allPartsOfSpeech: allPartsOfSpeech,
-                  senseDefinitions: [{ text: senseDefinitionString, inlineTags }]
+                  senseDefinitions: [{ text: senseDefinitionString, inlineTags, examples: sense.examples }]
                 });
               }
             });
@@ -117,33 +125,54 @@ export function JapaneseWordCard({ entry, isExactMatch = false }: JapaneseWordCa
                 // Single sense in group: Part of speech inline
                 const senseData = group.senseDefinitions[0];
                 return (
-                  <div key={groupIndex} className="flex items-start gap-2">
-                    {/* Show group number only if multiple groups */}
-                    {posGroups.length > 1 && (
-                      <span className="text-sm font-medium min-w-[1.5rem]">
-                        {groupIndex + 1}.
-                      </span>
-                    )}
-                    <div className="flex items-center gap-2 flex-1 flex-wrap">
-                      {/* All parts of speech badges inline */}
-                      {group.allPartsOfSpeech.filter(pos => pos !== 'unknown').map((pos, posIndex) => (
-                        <Badge key={posIndex} variant="outline" className="text-xs">
-                          {pos}
-                        </Badge>
-                      ))}
-                      {/* Inline tags with different colors by type */}
-                      {senseData.inlineTags.map((tag, tagIndex) => {
-                        const colorClass = tag.type === 'misc'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-green-100 text-green-800';
-                        return (
-                          <Badge key={tagIndex} variant="secondary" className={`text-xs ${colorClass}`}>
-                            {tag.text}
+                  <div key={groupIndex} className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      {/* Show group number only if multiple groups */}
+                      {posGroups.length > 1 && (
+                        <span className="text-sm font-medium min-w-[1.5rem]">
+                          {groupIndex + 1}.
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2 flex-1 flex-wrap">
+                        {/* All parts of speech badges inline */}
+                        {group.allPartsOfSpeech.filter(pos => pos !== 'unknown').map((pos, posIndex) => (
+                          <Badge key={posIndex} variant="outline" className="text-xs">
+                            {pos}
                           </Badge>
-                        );
-                      })}
-                      <span className="text-sm">{senseData.text}</span>
+                        ))}
+                        {/* Inline tags with different colors by type */}
+                        {senseData.inlineTags.map((tag, tagIndex) => {
+                          const colorClass = tag.type === 'misc'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800';
+                          return (
+                            <Badge key={tagIndex} variant="secondary" className={`text-xs ${colorClass}`}>
+                              {tag.text}
+                            </Badge>
+                          );
+                        })}
+                        <span className="text-sm">{senseData.text}</span>
+                      </div>
                     </div>
+
+                    {/* Examples */}
+                    {senseData.examples && senseData.examples.length > 0 && (
+                      <div className="bg-gray-800 p-2 rounded text-sm ml-6">
+                        {senseData.examples.map((ex, k) => {
+                          const japSentence = ex.sentences?.find(s => !s.lang || s.lang === '')?.text;
+                          const engSentence = ex.sentences?.find(s => s.lang === 'eng')?.text ||
+                            ex.translation || '';
+
+                          return (
+                            <div key={`example-${groupIndex}-0-${k}`} className={k > 0 ? "mt-2 pt-2 border-t border-gray-700" : ""}>
+                              <div className="font-medium">{ex.text}</div>
+                              {japSentence && <div className="text-gray-300">{japSentence}</div>}
+                              {engSentence && <div className="text-gray-400 italic">{engSentence}</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               } else {
@@ -167,26 +196,47 @@ export function JapaneseWordCard({ entry, isExactMatch = false }: JapaneseWordCa
                       </div>
                     </div>
                     {/* Ordered list of definitions */}
-                    <div className="space-y-1 ml-6">
+                    <div className="space-y-2 ml-6">
                       {group.senseDefinitions.map((senseData, defIndex) => (
-                        <div key={defIndex} className="flex items-start gap-2">
-                          <span className="text-sm font-medium min-w-[1.5rem]">
-                            {defIndex + 1}.
-                          </span>
-                          <div className="flex items-center gap-2 flex-1 flex-wrap">
-                            {/* Inline tags for this specific sense with different colors */}
-                            {senseData.inlineTags.map((tag, tagIndex) => {
-                              const colorClass = tag.type === 'misc'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-green-100 text-green-800';
-                              return (
-                                <Badge key={tagIndex} variant="secondary" className={`text-xs ${colorClass}`}>
-                                  {tag.text}
-                                </Badge>
-                              );
-                            })}
-                            <span className="text-sm">{senseData.text}</span>
+                        <div key={defIndex} className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <span className="text-sm font-medium min-w-[1.5rem]">
+                              {defIndex + 1}.
+                            </span>
+                            <div className="flex items-center gap-2 flex-1 flex-wrap">
+                              {/* Inline tags for this specific sense with different colors */}
+                              {senseData.inlineTags.map((tag, tagIndex) => {
+                                const colorClass = tag.type === 'misc'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-green-100 text-green-800';
+                                return (
+                                  <Badge key={tagIndex} variant="secondary" className={`text-xs ${colorClass}`}>
+                                    {tag.text}
+                                  </Badge>
+                                );
+                              })}
+                              <span className="text-sm">{senseData.text}</span>
+                            </div>
                           </div>
+
+                          {/* Examples for this specific sense */}
+                          {senseData.examples && senseData.examples.length > 0 && (
+                            <div className="bg-gray-800 p-2 rounded text-sm ml-6">
+                              {senseData.examples.map((ex, k) => {
+                                const japSentence = ex.sentences?.find(s => !s.lang || s.lang === '')?.text;
+                                const engSentence = ex.sentences?.find(s => s.lang === 'eng')?.text ||
+                                  ex.translation || '';
+
+                                return (
+                                  <div key={`example-${groupIndex}-${defIndex}-${k}`} className={k > 0 ? "mt-2 pt-2 border-t border-gray-700" : ""}>
+                                    <div className="font-medium">{ex.text}</div>
+                                    {japSentence && <div className="text-gray-300">{japSentence}</div>}
+                                    {engSentence && <div className="text-gray-400 italic">{engSentence}</div>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
